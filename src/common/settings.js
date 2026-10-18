@@ -4,10 +4,11 @@
   const DXE = (globalThis.DXE = globalThis.DXE || {});
   if (DXE.settingsReady) return;
 
-  DXE.VERSION = '0.1.0';
+  DXE.VERSION = '0.2.0';
   DXE.DEFAULTS = Object.freeze({
     mediumIcons: true,
     contextMenu: true,
+    suppressDetails: true,
     darkDocs: false,
     darkSheets: false,
     darkSlides: false,

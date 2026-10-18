@@ -3,7 +3,7 @@
   "name": "__MSG_extName__",
   "short_name": "Drive Explorer",
   "description": "__MSG_extDescription__",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "default_locale": "en",
   "minimum_chrome_version": "111",
   "icons": {
@@ -49,6 +49,8 @@
         "src/drive/tiles.js",
         "src/drive/native-actions.js",
         "src/drive/context-menu.js",
+        "src/drive/details.js",
+        "src/drive/properties.js",
         "src/drive/main.js"
       ],
       "css": [

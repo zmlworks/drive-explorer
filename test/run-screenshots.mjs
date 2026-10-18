@@ -165,6 +165,133 @@ for (const lang of ['en', 'ja']) {
   }
 }
 
+// ---------------- 0.2.0: details panel suppression + Properties dialog ----------------
+const propsState = (page) => page.evaluate(() => {
+  const r = document.getElementById('dxe-props-host')?.shadowRoot;
+  const w = r && r.querySelector('.win');
+  if (!w) return null;
+  return { title: w.querySelector('.ttl').textContent, body: w.querySelector('.body').innerText, rect: w.getBoundingClientRect().toJSON(),
+    loading: !!w.querySelector('.spin'), failed: !!w.querySelector('.msg.err') };
+});
+const waitProps = async (page, ms = 7000) => {
+  const end = Date.now() + ms;
+  let st;
+  while (Date.now() < end) { st = await propsState(page); if (st && !st.loading) return st; await page.waitForTimeout(150); }
+  return st;
+};
+const panelInfo = (page) => page.evaluate(() => {
+  const p = document.querySelector('[data-dxe-details]');
+  const mn = document.querySelector('[role=main]').getBoundingClientRect().width;
+  return { open: window.__details.isOpen(), tagged: !!p, opacity: p ? getComputedStyle(p).opacity : null, mainWidth: Math.round(mn) };
+});
+
+for (const lang of ['en', 'ja']) {
+  for (const theme of ['light', 'dark']) {
+    const tag = `${lang}-${theme}`;
+    // A) suppression ON: Drive opens the pane on click (autodetails) → it stays invisible
+    {
+      const { ctx, page } = await openDrive({ hl: lang, theme, nolog: 1, autodetails: 1 }, { suppressDetails: true });
+      const w0 = (await panelInfo(page)).mainWidth;
+      const t = tileByName(page, 'mountains.jpg');
+      await t.click();
+      await page.waitForTimeout(700);
+      const pi = await panelInfo(page);
+      check(`[${tag}] details pane opened by Drive is suppressed`, pi.open && pi.tagged && pi.opacity === '0' && pi.mainWidth === w0, JSON.stringify(pi));
+      if (theme === 'light') await page.screenshot({ path: path.join(OUT, `07-details-pane-suppressed-${tag}.png`) });
+      // Properties while the pane is (hidden-)open: must stay open+hidden afterwards
+      await t.click({ button: 'right', position: { x: 30, y: 30 } });
+      await menuItem(page, 'properties').click();
+      const st = await waitProps(page);
+      check(`[${tag}] Properties with pane already open`, st && !st.failed && /Image|画像/.test(st.body) && (await panelInfo(page)).open, st && st.title);
+      await ctx.close();
+    }
+    // B) Properties: menu → hidden pane → scrape → pane closed again
+    {
+      const { ctx, page } = await openDrive({ hl: lang, theme, nolog: 1 }, { suppressDetails: true });
+      const t = tileByName(page, lang === 'ja' ? '議事録' : 'Meeting notes');
+      await t.click();
+      await t.click({ button: 'right', position: { x: 30, y: 30 } });
+      await page.waitForTimeout(150);
+      if (lang === 'ja' && theme === 'light') await page.screenshot({ path: path.join(OUT, `08-context-menu-with-properties-${tag}.png`) });
+      if (lang === 'en' && theme === 'dark') await page.screenshot({ path: path.join(OUT, `08-context-menu-with-properties-${tag}.png`) });
+      await menuItem(page, 'properties').click();
+      const st = await waitProps(page);
+      const want = lang === 'ja' ? ['種類', 'サイズ', '使用容量', '場所', '所有者', '更新日時', '最終閲覧', '作成日時', 'アクセス', '2 人と共有', 'ラベル'] : ['Type', 'Size', 'Storage used', 'Location', 'Owner', 'Modified', 'Opened', 'Created', 'Access', 'Shared with 2 people', 'Labels'];
+      const miss = want.filter((w) => !st.body.includes(w));
+      const titleOk = lang === 'ja' ? /^議事録 2026-10-15\.docx のプロパティ$/.test(st.title) : /^Meeting notes 2026-10-15 Properties$/.test(st.title);
+      check(`[${tag}] Properties dialog fields (known + unknown label)`, st && !st.failed && !miss.length && titleOk, 'missing=' + miss.join(',') + ' title=' + st.title);
+      await page.waitForTimeout(500);
+      check(`[${tag}] details pane closed again after reading`, !(await panelInfo(page)).open && !(await page.evaluate(() => document.documentElement.classList.contains('dxe-props-busy'))));
+      await page.screenshot({ path: path.join(OUT, `09-properties-${tag}.png`) });
+      if (theme === 'light') {
+        await page.locator('#dxe-props-host >> .tab >> nth=1').click();
+        await page.waitForTimeout(100);
+        await page.screenshot({ path: path.join(OUT, `10-properties-details-tab-${tag}.png`) });
+        // drag by title bar
+        const r0 = (await propsState(page)).rect;
+        await page.mouse.move(r0.x + 80, r0.y + 15); await page.mouse.down();
+        await page.mouse.move(r0.x + 180, r0.y + 75, { steps: 5 }); await page.mouse.up();
+        const r1 = (await propsState(page)).rect;
+        check(`[${tag}] dialog draggable by title bar`, Math.abs(r1.x - r0.x - 100) < 3 && Math.abs(r1.y - r0.y - 60) < 3, `${r0.x},${r0.y} → ${r1.x},${r1.y}`);
+        await page.keyboard.press('Escape');
+        check(`[${tag}] Esc closes Properties`, !(await propsState(page)));
+        // Alt+Enter on the selection
+        await tileByName(page, 'budget.xlsx').click();
+        await page.keyboard.press('Alt+Enter');
+        const st2 = await waitProps(page);
+        check(`[${tag}] Alt+Enter opens Properties`, st2 && /budget\.xlsx/.test(st2.title) && !st2.failed, st2 && st2.title);
+        await page.locator('#dxe-props-host >> .btn.primary').click();
+        check(`[${tag}] OK closes Properties`, !(await propsState(page)));
+      }
+      await ctx.close();
+    }
+  }
+}
+// C) suppression OFF: pane shows normally; Properties keeps it invisible while reading
+{
+  const { ctx, page } = await openDrive({ hl: 'en', nolog: 1 }, { suppressDetails: false });
+  const t = tileByName(page, 'sunset.jpg');
+  await t.click();
+  await page.evaluate(() => window.__details.open());
+  await page.waitForTimeout(600);
+  const pi = await panelInfo(page);
+  check('[off] details pane visible when suppression is off', pi.open && pi.opacity === '1', JSON.stringify(pi));
+  await page.screenshot({ path: path.join(OUT, '07-details-pane-visible-when-off-en-light.png') });
+  await page.evaluate(() => window.__details.close());
+  await page.waitForTimeout(200);
+  // sample pane opacity while Properties reads it
+  await page.evaluate(() => { window.__maxOpacity = 0; const tick = () => { const p = document.querySelector('.dp'); if (p) window.__maxOpacity = Math.max(window.__maxOpacity, +getComputedStyle(p).opacity); if (!window.__stopTick) requestAnimationFrame(tick); }; tick(); });
+  await t.click({ button: 'right', position: { x: 30, y: 30 } });
+  await menuItem(page, 'properties').click();
+  const st = await waitProps(page);
+  await page.waitForTimeout(600);
+  const maxOp = await page.evaluate(() => { window.__stopTick = true; return window.__maxOpacity; });
+  check('[off] pane opened for Properties never visible, closed afterwards', st && !st.failed && maxOp === 0 && !(await panelInfo(page)).open, 'maxOpacity=' + maxOp);
+  await ctx.close();
+}
+// D) fallbacks: menu "Details" broken → toolbar (i) button; no pane at all → message
+{
+  const { ctx, page } = await openDrive({ hl: 'en', nolog: 1, nomenudetails: 1 }, {});
+  const t = tileByName(page, 'README.txt');
+  await t.click();
+  await t.click({ button: 'right', position: { x: 30, y: 30 } });
+  await menuItem(page, 'properties').click();
+  const st = await waitProps(page);
+  check('[fallback] Properties via toolbar details button', st && !st.failed && /Text/.test(st.body), st && st.body.slice(0, 60));
+  await ctx.close();
+}
+for (const lang of ['en', 'ja']) {
+  const { ctx, page } = await openDrive({ hl: lang, nolog: 1, nodetails: 1 }, {});
+  const t = tileByName(page, 'README.txt');
+  await t.click();
+  await t.click({ button: 'right', position: { x: 30, y: 30 } });
+  await menuItem(page, 'properties').click();
+  const st = await waitProps(page, 9000);
+  check(`[fallback-${lang}] graceful message when the pane can't be read`, st && st.failed, st && st.body.slice(0, 80));
+  await page.screenshot({ path: path.join(OUT, `11-properties-failed-${lang}-light.png`) });
+  await ctx.close();
+}
+
 // list view: items detected as rows, not restyled; menu still works
 {
   const { ctx, page } = await openDrive({ hl: 'en', view: 'list', nolog: 1 }, { mediumIcons: true, contextMenu: true });
@@ -206,7 +333,7 @@ for (const theme of ['light', 'dark']) {
   const msgs = JSON.parse(fs.readFileSync(path.join(ROOT, '_locales', theme === 'dark' ? 'ja' : 'en', 'messages.json'), 'utf8'));
   await page.addInitScript(`(() => { const M = ${JSON.stringify(msgs)}; const store = { darkDocs: true };
     globalThis.chrome = { i18n: { getMessage: (k) => (M[k] || {}).message || '', getUILanguage: () => '${theme === 'dark' ? 'ja' : 'en'}' },
-      runtime: { getManifest: () => ({ version: '0.1.0' }) },
+      runtime: { getManifest: () => ({ version: '${manifest.version}' }) },
       storage: { sync: { get(d, cb) { cb(Object.assign({}, d, store)); }, set() {} }, onChanged: { addListener() {} } }, tabs: {} }; })();`);
   await page.goto('file://' + path.join(ROOT, 'popup', 'popup.html'));
   await page.waitForTimeout(200);

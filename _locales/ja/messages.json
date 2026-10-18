@@ -1,19 +1,59 @@
 {
-  "extName": { "message": "Drive Explorer（Win11 風）" },
-  "extDescription": { "message": "Google ドライブを Windows 11 のエクスプローラー風に：中アイコン表示、Win11 風右クリックメニュー、ドキュメント/スプレッドシート/スライドのダークモード。" },
-  "secDrive": { "message": "Google ドライブ" },
-  "optMediumIcons": { "message": "中アイコン表示（グリッド表示）" },
-  "optMediumIconsHint": { "message": "ドライブのグリッド表示を小さいタイル・アイコンの下に名前の形に変更します。" },
-  "optContextMenu": { "message": "Windows 11 風の右クリックメニュー" },
-  "optContextMenuHint": { "message": "Shift + 右クリックでドライブ標準のメニューを表示します。" },
-  "secDocs": { "message": "エディタのダークモード（docs.google.com）" },
-  "optDarkDocs": { "message": "ドキュメント" },
-  "optDarkSheets": { "message": "スプレッドシート" },
-  "optDarkSlides": { "message": "スライド" },
-  "secAdvanced": { "message": "詳細設定" },
-  "optDebug": { "message": "デバッグ：セレクタの一致状況をコンソールに出力" },
-  "btnDiag": { "message": "現在のドライブタブの診断情報をコピー" },
-  "diagCopied": { "message": "診断情報をクリップボードにコピーしました。" },
-  "diagNoTab": { "message": "先に drive.google.com のタブを開いてください（インストール後は再読み込みが必要です）。" },
-  "footer": { "message": "変更はすぐに反映されます。通信やアカウントへのアクセスは一切行いません。" }
+  "extName": {
+    "message": "Drive Explorer（Win11 風）"
+  },
+  "extDescription": {
+    "message": "Google ドライブを Windows 11 のエクスプローラー風に：中アイコン表示、Win11 風右クリックメニュー、ドキュメント/スプレッドシート/スライドのダークモード。"
+  },
+  "secDrive": {
+    "message": "Google ドライブ"
+  },
+  "optMediumIcons": {
+    "message": "中アイコン表示（グリッド表示）"
+  },
+  "optMediumIconsHint": {
+    "message": "ドライブのグリッド表示を小さいタイル・アイコンの下に名前の形に変更します。"
+  },
+  "optContextMenu": {
+    "message": "Windows 11 風の右クリックメニュー"
+  },
+  "optContextMenuHint": {
+    "message": "Shift + 右クリックでドライブ標準のメニューを表示します。"
+  },
+  "secDocs": {
+    "message": "エディタのダークモード（docs.google.com）"
+  },
+  "optDarkDocs": {
+    "message": "ドキュメント"
+  },
+  "optDarkSheets": {
+    "message": "スプレッドシート"
+  },
+  "optDarkSlides": {
+    "message": "スライド"
+  },
+  "secAdvanced": {
+    "message": "詳細設定"
+  },
+  "optDebug": {
+    "message": "デバッグ：セレクタの一致状況をコンソールに出力"
+  },
+  "btnDiag": {
+    "message": "現在のドライブタブの診断情報をコピー"
+  },
+  "diagCopied": {
+    "message": "診断情報をクリップボードにコピーしました。"
+  },
+  "diagNoTab": {
+    "message": "先に drive.google.com のタブを開いてください（インストール後は再読み込みが必要です）。"
+  },
+  "footer": {
+    "message": "変更はすぐに反映されます。通信やアカウントへのアクセスは一切行いません。"
+  },
+  "optSuppressDetails": {
+    "message": "ドライブの詳細パネルを表示しない"
+  },
+  "optSuppressDetailsHint": {
+    "message": "右側の「詳細（ファイル情報）」パネルを表示しません。代わりにプロパティ（Alt+Enter）を使います。"
+  }
 }

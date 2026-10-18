@@ -55,6 +55,15 @@ await page.waitForTimeout(1600);
 const acts = await page.evaluate(() => window.__actions);
 check('Move routed to Drive native menu from isolated world', acts.includes('MENU Move'), acts.join(' | '));
 
+// Properties through the real extension
+await tile.click({ button: 'right', position: { x: 30, y: 30 } });
+await page.locator('#dxe-menu-host >> .item[data-action="properties"]').click();
+await page.waitForTimeout(3500);
+const props = await page.evaluate(() => document.getElementById('dxe-props-host')?.shadowRoot?.querySelector('.body')?.innerText || '');
+check('Properties dialog filled from Drive details pane (real extension)', /Type:\s*Image/.test(props) && /Size:/.test(props), props.replace(/\n/g, ' ').slice(0, 120));
+await page.screenshot({ path: path.join(OUT, 'real-extension-properties.png') });
+await page.keyboard.press('Escape');
+
 // popup → storage → content script
 const popup = await ctx.newPage();
 await popup.goto(`chrome-extension://${id}/popup/popup.html`);

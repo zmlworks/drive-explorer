@@ -12,7 +12,7 @@
   const DXE = (globalThis.DXE = globalThis.DXE || {});
 
   const S = (DXE.SEL = {
-    revision: '2026-10-18',
+    revision: '2026-10-18b',
 
     /* Elements that represent one file/folder. Tried in order; the first
        selector whose closest() hits wins. Grid tiles and list rows both match. */
@@ -113,6 +113,7 @@
       keys: [{ key: 'Delete', code: 'Delete', keyCode: 46 }],
     },
     driveMenu: { custom: 'driveMenu' },
+    properties: { custom: 'properties', single: true },
   };
 
   /* ---------------- generic helpers ---------------- */
@@ -128,7 +129,7 @@
     return cs.display !== 'none' && cs.visibility !== 'hidden';
   };
 
-  S.isOurs = (el) => !!(el && el.closest && el.closest('#dxe-menu-host,[data-dxe-ui]'));
+  S.isOurs = (el) => !!(el && el.closest && el.closest('#dxe-menu-host,#dxe-props-host,[data-dxe-ui]'));
 
   /* Label candidates of an element: aria-label, first line, every leaf text. */
   S.labelCandidates = (el) => {
@@ -357,6 +358,89 @@
     return S.isFolder(item)
       ? `https://drive.google.com/drive/folders/${id}?usp=sharing`
       : `https://drive.google.com/file/d/${id}/view?usp=sharing`;
+  };
+
+
+  /* ---------------- details side panel ("Details" / "ファイル情報") ----------------
+     Drive's right-hand pane. Found by its Details/Activity tabs (or a
+     role=complementary column) plus geometry: a narrow column on the right that
+     never contains the file list. */
+  const D = (S.DETAILS = {
+    tabDetails: /^(details|詳細)$/i,
+    tabActivity: /^(activity|アクティビティ)$/i,
+    closeButton: /^(close|close details|hide details|閉じる|詳細を閉じる|詳細を非表示|詳細パネルを閉じる)$/i,
+    hideToolbar: /^(hide details|詳細を非表示)$/i,
+    /* button texts that are UI, not values */
+    ignoreText: /^(manage access|アクセスを管理|share|共有|edit|編集|add description|説明を追加|show more|もっと見る|さらに表示)$/i,
+    /* section headings that are not label/value pairs */
+    headings: /^(file details|folder details|ファイルの詳細|フォルダの詳細|details|詳細|activity|アクティビティ)$/i,
+    maxWidthRatio: 0.5,
+    /* label → field key (English + Japanese Drive UI) */
+    labels: {
+      type: /^(type|種類|ファイルの種類)$/i,
+      size: /^(size|サイズ|ファイルサイズ)$/i,
+      storage: /^(storage used|使用容量|使用済みの容量|ストレージ使用量|ストレージの使用量)$/i,
+      location: /^(location|場所)$/i,
+      owner: /^(owner|オーナー|所有者)$/i,
+      modified: /^(modified|last modified|最終更新|最終更新日|更新日|更新日時)$/i,
+      opened: /^(opened|opened by me|last opened|最終閲覧|最終閲覧日|自分が最後に開いた日|自分が開いた日|開いた日)$/i,
+      created: /^(created|作成日|作成|作成日時)$/i,
+      access: /^(who has access|has access|access|アクセスできるユーザー|アクセス権のあるユーザー|アクセス権|アクセス)$/i,
+      download: /^(download permissions|ダウンロード権限|ダウンロードの権限)$/i,
+      description: /^(description|説明)$/i,
+      shared: /^(shared|共有日|共有)$/i,
+    },
+  });
+
+  S.labelKey = (text) => {
+    const t = norm(text);
+    for (const k of Object.keys(D.labels)) if (D.labels[k].test(t)) return k;
+    return null;
+  };
+
+  const tabMatches = (re) => [...document.querySelectorAll('[role="tab"]')].filter((t) => !S.isOurs(t) && S.matchesLabel(t, re));
+
+  S.detailsTab = (panel) => [...(panel || document).querySelectorAll('[role="tab"]')].find((t) => S.matchesLabel(t, D.tabDetails));
+
+  /** The details panel column, or null. Records strategy in S.lastDetailsStrategy. */
+  S.findDetailsPanel = () => {
+    const vw = innerWidth;
+    const okColumn = (el) => {
+      if (!el || S.isOurs(el) || el === document.body || el === document.documentElement) return false;
+      // never the file list (or anything containing it)
+      if (el.querySelector('[role="main"],[role="grid"],[role="grid"] [data-id]')) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 120 && r.width <= Math.max(480, vw * D.maxWidthRatio) && r.height > 150 && r.left >= vw * 0.35;
+    };
+    const climb = (el) => {
+      let best = null;
+      for (let p = el; p && p !== document.body; p = p.parentElement) {
+        if (okColumn(p)) best = p; else if (best) break;
+      }
+      return best;
+    };
+    // 1. Details + Activity tabs side by side
+    for (const tab of tabMatches(D.tabDetails)) {
+      const list = tab.closest('[role="tablist"]') || tab.parentElement;
+      if (!list || !tabMatches(D.tabActivity).some((a) => list.contains(a))) continue;
+      const col = climb(list);
+      if (col) { S.lastDetailsStrategy = 'tabs'; return col; }
+    }
+    // 2. complementary landmark on the right
+    for (const c of document.querySelectorAll('[role="complementary"],aside')) {
+      if (S.isOurs(c)) continue;
+      const known = S.labelCandidates(c).filter((t) => S.labelKey(t)).length;
+      if (known >= 2) { const col = climb(c); if (col) { S.lastDetailsStrategy = 'complementary'; return col; } }
+    }
+    return null;
+  };
+
+  S.findDetailsClose = (panel) => {
+    for (const b of panel.querySelectorAll('[role="button"],button')) {
+      const l = norm(b.getAttribute('aria-label') || b.getAttribute('data-tooltip') || b.textContent);
+      if (D.closeButton.test(l)) return b;
+    }
+    return null;
   };
 
   S.uiLang = () => ((document.documentElement.lang || navigator.language || 'en').toLowerCase().startsWith('ja') ? 'ja' : 'en');

@@ -11,7 +11,7 @@
       open: 'Open', openNewTab: 'Open in new tab', download: 'Download', rename: 'Rename',
       copyLink: 'Copy link', share: 'Share', move: 'Move', addShortcut: 'Add shortcut',
       star: 'Add / remove star', makeCopy: 'Make a copy', info: 'File information', delete: 'Delete',
-      driveMenu: 'Show Drive menu', driveMenuHint: 'Shift+Right-click',
+      driveMenu: 'Show Drive menu', driveMenuHint: 'Shift+Right-click', properties: 'Properties',
       linkCopied: 'Link copied', failed: 'Drive Explorer could not run “{0}” — try “Show Drive menu”.',
       items: '{0} items',
     },
@@ -19,7 +19,7 @@
       open: '開く', openNewTab: '新しいタブで開く', download: 'ダウンロード', rename: '名前の変更',
       copyLink: 'リンクをコピー', share: '共有', move: '移動', addShortcut: 'ショートカットを追加',
       star: 'スターを付ける / 外す', makeCopy: 'コピーを作成', info: 'ファイル情報', delete: '削除',
-      driveMenu: 'ドライブのメニューを表示', driveMenuHint: 'Shift+右クリック',
+      driveMenu: 'ドライブのメニューを表示', driveMenuHint: 'Shift+右クリック', properties: 'プロパティ',
       linkCopied: 'リンクをコピーしました', failed: '「{0}」を実行できませんでした。「ドライブのメニューを表示」をお試しください。',
       items: '{0} 個の項目',
     },
@@ -40,6 +40,7 @@
     makeCopy: '<rect x="5.5" y="5" width="8" height="9" rx="1.2"/><path d="M3.5 11V3.2c0-.4.3-.7.7-.7H10"/>',
     info: '<circle cx="8" cy="8" r="6"/><path d="M8 7.2v4"/><path d="M8 4.9v.1" stroke-width="1.6"/>',
     delete: '<path d="M2.5 4.5h11"/><path d="M6.2 4.5V3.2c0-.4.3-.7.7-.7h2.2c.4 0 .7.3.7.7v1.3"/><path d="M4 4.5l.7 8.4c.05.6.5 1.1 1.1 1.1h4.4c.6 0 1.05-.5 1.1-1.1l.7-8.4"/><path d="M6.8 7v4.5M9.2 7v4.5"/>',
+    properties: '<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5 5.5h6M5 8h6M5 10.5h3.5"/>',
     driveMenu: '<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.5 8h.1M8 8h.1M10.5 8h.1" stroke-width="1.8"/>',
   };
   const icon = (id) => `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[id] || ''}</svg>`;
@@ -51,6 +52,7 @@
     [['info']],
     [['delete', 'Del']],
     [['driveMenu', '§']],
+    [['properties', 'Alt+Enter']],
   ];
 
   const CSS = `

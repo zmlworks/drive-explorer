@@ -189,6 +189,11 @@
       if (ok && DXE.menu) DXE.menu.toast(DXE.menu.t('linkCopied'));
       return { ok, how: 'clipboard (constructed link)' };
     },
+    async properties(ctx) {
+      if (!DXE.props) return { ok: false, why: 'properties module missing' };
+      DXE.props.show(ctx);
+      return { ok: true, how: 'properties dialog' };
+    },
     async driveMenu(ctx) {
       const m = await openNativeMenu(ctx, { visible: true });
       return { ok: !!m, how: 'native menu shown' };
@@ -201,7 +206,7 @@
     if (!spec) return false;
     const log = { action: id, steps: [] };
     try {
-      if (id === 'driveMenu' || id === 'openNewTab') {
+      if (id === 'driveMenu' || id === 'openNewTab' || id === 'properties') {
         const r = await CUSTOM[spec.custom](ctx);
         log.steps.push(r);
         return (log.ok = r.ok);
@@ -253,7 +258,20 @@
     }
   }
 
+  /** Select an item like a user click would (best effort). */
+  function selectItem(item, target) {
+    if (SEL.isSelected(item)) return;
+    const el = target && !target.closest('button,[role="button"],[aria-haspopup]') && item.contains(target) ? target : item;
+    const r = el.getBoundingClientRect();
+    const x = r.left + 4, y = r.top + 4;
+    mouse(el, 'mousedown', x, y, { button: 0, buttons: 1 });
+    mouse(el, 'mouseup', x, y, { button: 0 });
+    mouse(el, 'click', x, y, { button: 0 });
+    DXE.log('selectItem → synthetic click; selected now:', SEL.isSelected(item));
+  }
+
   DXE.native = {
+    selectItem,
     isBypassing: () => bypass,
     perform,
     openNativeMenu,

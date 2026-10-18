@@ -50,6 +50,24 @@
   .Nmenu [role=menuitem]:hover, .Nmenu [role=menuitem].hl { background: rgba(0,0,0,.08); }
   .Nmenu .k { margin-left: auto; color: #777; font-size: 12px; }
   .Nmenu hr { border: 0; border-top: 1px solid #ddd; margin: 8px 0; }
+  /* details side panel (mock of Drive's right-hand "Details" pane) */
+  .dp { width: 360px; flex: 0 0 360px; background: #fff; border-radius: 16px; margin: 0 16px 16px 0; padding: 12px 16px; box-sizing: border-box; overflow: auto; }
+  body.dark .dp { background: #131314; }
+  .dpH { display: flex; align-items: center; gap: 12px; height: 48px; }
+  .dpT { flex: 1; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dpX { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .dpTabs { display: flex; gap: 24px; border-bottom: 1px solid #ddd; margin: 4px 0 12px; }
+  .dpTabs [role=tab] { padding: 8px 2px; cursor: pointer; }
+  .dpTabs [aria-selected=true] { border-bottom: 3px solid #0b57d0; color: #0b57d0; }
+  .dpS .h { font-weight: 500; margin: 14px 0 8px; font-size: 15px; }
+  .acc { display: flex; align-items: center; gap: 6px; }
+  .acc img { width: 28px; height: 28px; border-radius: 50%; }
+  .mbtn { display: inline-block; margin-top: 8px; padding: 6px 14px; border: 1px solid #747775; border-radius: 16px; font-size: 13px; }
+  .kv { margin-bottom: 12px; } .kv .l { font-size: 12px; color: #444746; font-weight: 500; } body.dark .kv .l { color: #c4c7c5; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid #ccc; border-radius: 8px; }
+  .hdrbar { display: flex; align-items: center; }
+  .hdrbar .vd { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font: italic bold 16px serif; }
+  .hdrbar .vd:hover { background: rgba(0,0,0,.08); }
   #log { position: fixed; right: 8px; bottom: 8px; font: 11px monospace; background: rgba(0,0,0,.75); color: #0f0; padding: 6px; max-width: 420px; white-space: pre-wrap; z-index: 5; }
 </style>
 </head>
@@ -57,7 +75,7 @@
 <div class="a1">
   <div class="nav"><div class="b" id="newBtn">+ New</div><p id="n1">My Drive</p><p id="n2">Shared with me</p><p id="n3">Starred</p><p id="n4">Trash</p></div>
   <div class="mn" role="main">
-    <div class="hdr" id="title">My Drive</div>
+    <div class="hdrbar"><div class="hdr" id="title">My Drive</div><div class="vd" id="vdBtn" role="button" tabindex="0">i</div></div>
     <div class="bar" id="selbar" hidden></div>
     <div role="grid" id="grid" aria-multiselectable="true"></div>
   </div>
@@ -111,6 +129,7 @@
     cell.dataset.id = rid(); cell.dataset.target = 'doc';
     cell.setAttribute('aria-selected', 'false'); cell.tabIndex = -1; cell.draggable = true;
     cell.setAttribute('aria-label', name + ' ' + (isFolder ? (ja ? 'フォルダ' : 'Folder') : TYPE[f.t]));
+    cell.dataset.mName = name; cell.dataset.mKind = isFolder ? 'folder' : f.t; cell.dataset.mI = idc;
     cell.setAttribute('jsaction', 'click:cOuCgd; dblclick:FNFY6c; contextmenu:mg9Pef');
     const icon = isFolder ? `<div class="Ic" role="img" aria-label="${T.folder}">${folderSvg(document.body.classList.contains('dark') ? '#c4c7c5' : '#5f6368')}</div>`
                           : `<div class="Ic"><img src="${typeIcon(...ICON[f.t])}" alt="${TYPE[f.t]}" width="16" height="16"></div>`;
@@ -199,7 +218,7 @@
         menus.slice(level + 1).forEach((s) => s.remove()); menus = menus.slice(0, level + 1);
         if (sub) { const r = it.getBoundingClientRect(); menus.push(buildMenu(M[id], r.right, r.top, level + 1)); }
       });
-      it.addEventListener('click', () => { if (sub) return; log('MENU ' + label); closeMenus(); });
+      it.addEventListener('click', () => { if (sub) return; log('MENU ' + label); closeMenus(); if (id === 'det' && !q.get('nomenudetails')) openDetails(); });
       m.appendChild(it);
     }
     document.body.appendChild(m);
@@ -216,6 +235,70 @@
   });
   document.addEventListener('click', (e) => { const b = e.target.closest('.Mr'); if (b) { const r = b.getBoundingClientRect(); closeMenus(); menus.push(buildMenu(M.top, r.left, r.bottom, 0)); } });
   document.addEventListener('mousedown', (e) => { if (!e.target.closest('.Nmenu')) closeMenus(); }, true);
+
+  /* ---- details side panel (created on open, removed on close, async content) ---- */
+  const DL = ja ? {
+    title: '詳細', act: 'アクティビティ', close: '閉じる', view: '詳細を表示', hide: '詳細を非表示', who: 'アクセスできるユーザー', priv: '自分のみ',
+    shared: (n) => n + ' 人と共有', manage: 'アクセスを管理', fd: 'ファイルの詳細', type: '種類', size: 'サイズ', storage: '使用容量', loc: '場所', owner: 'オーナー',
+    mod: '最終更新', opened: '自分が最後に開いた日', created: '作成日', dl: 'ダウンロード権限', dlv: '閲覧者はダウンロードできます', labels: 'ラベル', none: 'なし',
+    my: 'マイドライブ', me: '自分', d: (m, dd) => `2026/${m}/${dd}`, by: ' 自分', folderType: 'Google ドライブのフォルダ',
+  } : {
+    title: 'Details', act: 'Activity', close: 'Close', view: 'View details', hide: 'Hide details', who: 'Who has access', priv: 'Private to you',
+    shared: (n) => 'Shared with ' + n + ' people', manage: 'Manage access', fd: 'File details', type: 'Type', size: 'Size', storage: 'Storage used', loc: 'Location', owner: 'Owner',
+    mod: 'Modified', opened: 'Opened', created: 'Created', dl: 'Download permissions', dlv: 'Viewers can download', labels: 'Labels', none: 'None',
+    my: 'My Drive', me: 'me', d: (m, dd) => `${['', '', '', '', '', '', '', '', '', 'Sep', 'Oct'][m]} ${dd}, 2026`, by: ' by me', folderType: 'Google Drive Folder',
+  };
+  const vd = document.getElementById('vdBtn');
+  vd.setAttribute('aria-label', DL.view);
+  const SZ = ['18 KB', '3.2 MB', '9 KB', '12.4 MB', '2.1 MB', '845 KB', '4.7 MB', '1 KB', '3.9 MB', '22 KB'];
+  let dp = null;
+  function fillDetails() {
+    if (!dp) return;
+    const c = items().find((x) => x.getAttribute('aria-selected') === 'true');
+    const body = dp.querySelector('.dpB');
+    dp.querySelector('.dpT').textContent = c ? c.dataset.mName : DL.my;
+    body.innerHTML = '<div class="ld">…</div>';
+    if (!c) return;
+    const i = +c.dataset.mI, folder = c.dataset.mKind === 'folder';
+    setTimeout(() => {
+      if (!dp) return;
+      const shared = i % 3 === 0;
+      const kv = (l, v) => `<div class="kv"><div class="l">${l}</div><div class="v">${v}</div></div>`;
+      body.innerHTML =
+        `<div class="dpS"><div class="h">${DL.who}</div><div class="acc"><img alt="${DL.me}" src="${typeIcon('#8e24aa', 'Z')}">` +
+        (shared ? `<img alt="Aiko" src="${typeIcon('#039be5', 'A')}"><img alt="Ben" src="${typeIcon('#43a047', 'B')}"><span>${DL.shared(2)}</span>` : `<span>${DL.priv}</span>`) +
+        `</div><div role="button" class="mbtn" tabindex="0">${DL.manage}</div></div>` +
+        `<div class="dpS"><div class="h">${DL.fd}</div>` +
+        kv(DL.type, folder ? DL.folderType : TYPE[c.dataset.mKind]) +
+        (folder ? '' : kv(DL.size, SZ[i % SZ.length]) + kv(DL.storage, SZ[i % SZ.length])) +
+        kv(DL.loc, `<div role="button" class="chip" tabindex="0">${folderSvg('#5f6368')}${DL.my}</div>`) +
+        kv(DL.owner, DL.me) + kv(DL.mod, DL.d(10, 12) + DL.by) + kv(DL.opened, DL.d(10, 15) + DL.by) + kv(DL.created, DL.d(9, 30)) +
+        (folder ? '' : kv(DL.dl, DL.dlv)) + kv(DL.labels, DL.none) + '</div>';
+    }, 350);
+  }
+  function openDetails() {
+    if (q.get('nodetails')) return;
+    if (dp) { fillDetails(); return; }
+    dp = document.createElement('div');
+    dp.className = 'dp';
+    dp.innerHTML = `<div class="dpH"><div class="Ic">${folderSvg('#5f6368')}</div><div class="dpT" role="heading" aria-level="2"></div>` +
+      `<div class="dpX" role="button" aria-label="${DL.close}" tabindex="0">✕</div></div>` +
+      `<div class="dpTabs" role="tablist"><div role="tab" aria-selected="true">${DL.title}</div><div role="tab" aria-selected="false">${DL.act}</div></div>` +
+      `<div class="dpB" role="tabpanel"></div>`;
+    dp.querySelector('.dpX').addEventListener('click', closeDetails);
+    document.querySelector('.a1').appendChild(dp);
+    vd.setAttribute('aria-label', DL.hide);
+    log('DETAILS-OPEN');
+    fillDetails();
+  }
+  function closeDetails() { if (!dp) return; dp.remove(); dp = null; vd.setAttribute('aria-label', DL.view); log('DETAILS-CLOSE'); }
+  window.__details = { open: openDetails, close: closeDetails, isOpen: () => !!dp };
+  vd.addEventListener('click', () => (dp ? closeDetails() : openDetails()));
+  // Drive-like: pane follows the selection; with ?autodetails=1 a click opens it
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-id]')) return;
+    if (dp) fillDetails(); else if (q.get('autodetails')) openDetails();
+  });
 })();
 </script>
 </body>

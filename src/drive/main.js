@@ -24,21 +24,15 @@
 
   /* Right-clicking an unselected item selects it (Explorer + Drive behaviour).
      Drive usually already did this on mousedown; this is a safety net.      */
-  function ensureSelected(item, target) {
-    if (SEL.isSelected(item)) return;
-    const el = target && !target.closest('button,[role="button"],[aria-haspopup]') && item.contains(target) ? target : item;
-    const r = el.getBoundingClientRect();
-    const o = { bubbles: true, cancelable: true, composed: true, view: window, button: 0, clientX: r.left + 4, clientY: r.top + 4 };
-    el.dispatchEvent(new MouseEvent('mousedown', { ...o, buttons: 1 }));
-    el.dispatchEvent(new MouseEvent('mouseup', o));
-    el.dispatchEvent(new MouseEvent('click', o));
-    DXE.log('ensureSelected → synthetic click; selected now:', SEL.isSelected(item));
-  }
+  function ensureSelected(item, target) { DXE.native.selectItem(item, target); }
 
-  /* ---------- F2 = rename (Explorer habit) ---------- */
+  /* ---------- F2 = rename, Alt+Enter = properties (Explorer habits) ---------- */
   function onKeyDown(e) {
-    if (!DXE.settings.contextMenu || e.key !== 'F2' || e.ctrlKey || e.altKey || e.metaKey) return;
-    if (DXE.menu.isOpen()) return;
+    if (!DXE.settings.contextMenu || e.ctrlKey || e.metaKey) return;
+    const f2 = e.key === 'F2' && !e.altKey;
+    const altEnter = e.key === 'Enter' && e.altKey && !e.shiftKey;
+    if (!f2 && !altEnter) return;
+    if (DXE.menu.isOpen() || (DXE.props && DXE.props.isOpen() && f2)) return;
     const a = document.activeElement;
     if (a && a.closest && a.closest(SEL.editable)) return;
     const focused = a && SEL.findItem(a);
@@ -47,7 +41,7 @@
     if (!item || sel.length > 1) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    DXE.native.perform('rename', { item, target: item });
+    DXE.native.perform(f2 ? 'rename' : 'properties', { item, target: item });
   }
 
   /* ---------- diagnostics for bug reports (no file names / ids) ---------- */
@@ -84,6 +78,10 @@
         selected: SEL.selectedItems().length, visibleNativeMenus: SEL.visibleMenus().length,
       },
       tiles: DXE.tileStats,
+      details: { ...DXE.detailsStats, panelPresent: !!document.querySelector('[data-dxe-details]'),
+        panel: document.querySelector('[data-dxe-details]') ? skeleton(document.querySelector('[data-dxe-details]'), 0, 5) : null,
+        // labels only (never values) of what the panel currently shows
+        labelsSeen: document.querySelector('[data-dxe-details]') ? DXE.details.scrape(document.querySelector('[data-dxe-details]')).pairs.map((x) => x.label + (x.key ? ' → ' + x.key : ' (unknown)')) : [] },
       lastActions: DXE.native.lastResults,
       sampleTile: tile ? skeleton(tile) : null,
       sampleTileContainers: tile ? (() => { const c = SEL.tileContainers(tile); return { strategy: c.strategy, row: c.row && skeleton(c.row, 0, 1), rowsParent: c.rowsParent && skeleton(c.rowsParent, 0, 0) }; })() : null,
@@ -102,6 +100,7 @@
   /* ---------- settings ---------- */
   function apply() {
     if (DXE.settings.mediumIcons) DXE.tiles.enable(); else DXE.tiles.disable();
+    DXE.details.setSuppressed(DXE.settings.suppressDetails);
     if (!DXE.settings.contextMenu) DXE.menu.hide();
     DXE.detectTheme();
   }
@@ -118,7 +117,7 @@
     DXE.log('started', { version: DXE.VERSION, selectors: SEL.revision, settings: DXE.settings, uiLang: SEL.uiLang() });
   });
   DXE.onSettingsChanged((diff) => {
-    if ('mediumIcons' in diff || 'contextMenu' in diff) apply();
+    if ('mediumIcons' in diff || 'contextMenu' in diff || 'suppressDetails' in diff) apply();
     if ('debug' in diff && diff.debug) console.log('[DriveExplorer] debug on. Report:', report());
   });
 })();
