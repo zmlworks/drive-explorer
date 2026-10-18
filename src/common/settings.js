@@ -4,7 +4,7 @@
   const DXE = (globalThis.DXE = globalThis.DXE || {});
   if (DXE.settingsReady) return;
 
-  DXE.VERSION = '0.3.1';
+  DXE.VERSION = '0.3.2';
   DXE.DEFAULTS = Object.freeze({
     mediumIcons: true,
     contextMenu: true,

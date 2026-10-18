@@ -14,7 +14,7 @@
       none: 'No fields were found.', property: 'Property', value: 'Value', id: 'ID',
       partial: 'Only part of the information could be read from Drive’s details pane. Please send “Copy page structure” (popup) taken while a file is selected so this can be completed.',
       f: { type: 'Type', location: 'Location', size: 'Size', storage: 'Storage used', owner: 'Owner', modified: 'Modified',
-        opened: 'Opened', created: 'Created', access: 'Access', download: 'Download permissions', description: 'Description', shared: 'Shared' },
+        opened: 'Opened', created: 'Created', access: 'Access', download: 'Download permissions', description: 'Description', shared: 'Shared', security: 'Security restrictions' },
     },
     ja: {
       title: '{0} のプロパティ', general: '全般', details: '詳細', ok: 'OK', cancel: 'キャンセル', close: '閉じる',
@@ -23,7 +23,7 @@
       none: '項目が見つかりませんでした。', property: 'プロパティ', value: '値', id: 'ID',
       partial: 'ドライブの詳細パネルから一部の情報しか読み取れませんでした。改善のため、ファイルを選択した状態でポップアップの「ページ構造をコピー」を送ってください。',
       f: { type: '種類', location: '場所', size: 'サイズ', storage: '使用容量', owner: '所有者', modified: '更新日時',
-        opened: '最終閲覧', created: '作成日時', access: 'アクセス', download: 'ダウンロード権限', description: '説明', shared: '共有日' },
+        opened: '最終閲覧', created: '作成日時', access: 'アクセス', download: 'ダウンロード権限', description: '説明', shared: '共有日', security: 'セキュリティの制限' },
     },
   };
   const L = () => STR[SEL.uiLang()];
@@ -187,10 +187,16 @@
       const r = el('div', 'row'); r.append(el('div', 'k', L().f[k] + ':'), el('div', 'v', byKey[k])); body.appendChild(r); rows++;
     }
     // unknown / other fields still shown generically
-    const extra = data.pairs.filter((p) => !p.key || !GENERAL.includes(p.key));
+    const firstOf = new Set();
+    const extra = data.pairs.filter((p) => {
+      if (!p.key || !GENERAL.includes(p.key)) return true;
+      if (firstOf.has(p.key)) return true; // e.g. Drive's second "サイズ" row (shown under its own label)
+      firstOf.add(p.key);
+      return false;
+    });
     if (extra.length) {
       if (rows) body.appendChild(el('div', 'sep'));
-      for (const p of extra) { const r = el('div', 'row'); r.append(el('div', 'k', (p.key ? L().f[p.key] : p.label) + ':'), el('div', 'v', p.value)); body.appendChild(r); rows++; }
+      for (const p of extra) { const r = el('div', 'row'); r.append(el('div', 'k', ((p.key && L().f[p.key]) || p.label) + ':'), el('div', 'v', p.value)); body.appendChild(r); rows++; }
     }
     if (!rows) body.appendChild(el('div', 'msg', t('none')));
     if (data.partial) body.appendChild(el('div', 'hint partial', t('partial')));
@@ -256,7 +262,12 @@
       data.state = 'done';
       data.pairs = res.pairs.slice();
       data.partial = !!res.partial;
-      if (data.partial && !data.pairs.some((x) => x.key === 'location') && DXE.toolbar && DXE.pathText) {
+      // Drive's current pane has no "Location" row: derive it from the folder we're in
+      // (only in folder views; search/recent/shared lists mix locations)
+      let pm = null; try { pm = DXE.toolbar && DXE.toolbar.pathModel(); } catch (e) { /* ignore */ }
+      const inFolder = SEL.NAV.myDrivePath.test(location.pathname) || !!SEL.currentFolderId() ||
+        !!(pm && pm.via === 'breadcrumbs' && pm.segs[0] && pm.segs[0].root && !pm.segs[0].named);
+      if (inFolder && !data.pairs.some((x) => x.key === 'location') && DXE.toolbar && DXE.pathText) {
         // location from our address bar (breadcrumbs), e.g. "マイドライブ/Projects"
         try {
           const path = DXE.pathText();

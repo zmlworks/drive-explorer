@@ -13,7 +13,7 @@
   if (DXE.SEL) return; // loaded twice (top frame + all_frames helper entry)
 
   const S = (DXE.SEL = {
-    revision: '2026-10-18r1', // r1 = first pass from real-Drive structure dumps (0.3.1)
+    revision: '2026-10-18r2', // r1 = first pass from real-Drive dumps (0.3.1); r2 = pane iframe + menu/toolbar labels (0.3.2)
 
     /* Elements that represent one file/folder. Tried in order; the first
        selector whose closest() hits wins. Grid tiles and list rows both match. */
@@ -77,7 +77,8 @@
     },
     rename: {
       paths: [[L.RENAME]],
-      keys: [{ key: 'n', code: 'KeyN', keyCode: 78 }],
+      /* real menu label (2026-10): "名前を変更, Ctrl+Alt+E" */
+      keys: [{ key: 'e', code: 'KeyE', keyCode: 69, ctrlKey: true, altKey: true }],
       single: true,
     },
     copyLink: {
@@ -88,12 +89,14 @@
     share: {
       paths: [[L.SHARE, L.SHARE], [L.SHARE]],
       toolbar: /^(share|共有)$/i,
-      keys: [{ key: '.', code: 'Period', keyCode: 190 }],
+      /* real toolbar label: "共有 Ctrl+Alt+A" */
+      keys: [{ key: 'a', code: 'KeyA', keyCode: 65, ctrlKey: true, altKey: true }],
     },
     move: {
       paths: [[L.ORGANIZE, L.MOVE], [L.MOVE]],
       toolbar: /^(move|移動)$/i,
-      keys: [{ key: 'z', code: 'KeyZ', keyCode: 90 }],
+      /* real toolbar label: "移動 Ctrl+Alt+M" */
+      keys: [{ key: 'm', code: 'KeyM', keyCode: 77, ctrlKey: true, altKey: true }],
     },
     addShortcut: {
       paths: [[L.ORGANIZE, L.ADD_SHORTCUT], [L.ADD_SHORTCUT]],
@@ -107,8 +110,8 @@
     info: {
       paths: [[L.FILE_INFO, L.DETAILS], [L.DETAILS]],
       toolbar: /^(view details|show details|details|詳細を表示|詳細の表示|詳細)$/i,
-      /* real Drive tooltip seen in a dump: "詳細(Alt+→)" */
-      keys: [{ key: 'ArrowRight', code: 'ArrowRight', keyCode: 39, altKey: true }],
+      /* real Drive (2026-10 dump): button "詳細を表示(Alt+V、D キーの順)" → Alt+V, then D */
+      keys: [{ key: 'v', code: 'KeyV', keyCode: 86, altKey: true }, { key: 'd', code: 'KeyD', keyCode: 68 }],
     },
     delete: {
       paths: [[L.TRASH]],
@@ -135,10 +138,21 @@
   S.isOurs = (el) => !!(el && el.closest && el.closest('#dxe-menu-host,#dxe-props-host,[data-dxe-ui]'));
 
   /* Label candidates of an element: aria-label, first line, every leaf text. */
+  /* Real Drive appends keyboard hints to labels (seen in 2026-10 dumps):
+     "共有 Ctrl+Alt+A", "ゴミ箱に移動 Delete", "名前を変更, Ctrl+Alt+E",
+     "コピーを作成, Ctrl+C キーに続いて Ctrl+V キー", "詳細を非表示(Alt+V、D キーの順)". */
+  const KEYNAME = '(?:Ctrl|Control|Alt|Shift|Cmd|⌘|Option|Meta)\\s*\\+\\s*\\S+|Delete|Del|Enter|Backspace|Esc|F\\d{1,2}';
+  const HINT_TAIL = new RegExp('(?:\\s*[,、]\\s*|\\s+)(?:' + KEYNAME + ')(?:[\\s,、]*(?:キーに続いて|キーの順|キー|then|followed by)?[\\s,、]*(?:' + KEYNAME + '))*\\s*(?:キー(?:の順)?)?\\s*$', 'i');
+  S.cleanLabel = (t) => {
+    let x = norm(t);
+    x = x.replace(/\s*[(（][^()（）]*(?:Alt|Ctrl|Shift|キー|key|→|←)[^()（）]*[)）]\s*$/i, '');
+    for (let i = 0; i < 2; i++) x = x.replace(HINT_TAIL, '');
+    return x.trim();
+  };
   S.labelCandidates = (el) => {
     const out = new Set();
     const aria = norm(el.getAttribute('aria-label'));
-    if (aria) out.add(aria);
+    if (aria) { out.add(aria); const c = S.cleanLabel(aria); if (c) out.add(c); }
     const first = norm((el.innerText || el.textContent || '').split('\n')[0]);
     if (first) out.add(first);
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -348,7 +362,7 @@
       const comp = b.closest('[role="complementary"]');
       if (comp && !comp.hasAttribute('data-dxe-details')) continue;
       const lbl = norm(b.getAttribute('aria-label') || b.getAttribute('data-tooltip'));
-      if (!re.test(lbl) || !S.isShown(b) || S.isDisabled(b)) continue;
+      if (!(re.test(lbl) || re.test(S.cleanLabel(lbl))) || !S.isShown(b) || S.isDisabled(b)) continue;
       if (b.closest('[role="toolbar"]')) return b;
       if (!fallback) fallback = b;
     }
@@ -394,7 +408,7 @@
     },
     hideToolbar: /^(hide details|詳細を非表示)$/i,
     /* button texts that are UI, not values */
-    ignoreText: /^(manage access|アクセスを管理|share|共有|edit|編集|add description|説明を追加|show more|もっと見る|さらに表示)$/i,
+    ignoreText: /^(manage access|アクセスを管理|share|共有|edit|編集|add description|説明を追加|show more|もっと見る|さらに表示|manage versions|版を管理|close sidebar|サイドバーを閉じる|dismiss banner|バナーを閉じる)$/i,
     /* section headings that are not label/value pairs */
     headings: /^(file details|folder details|ファイルの詳細|フォルダの詳細|details|詳細|activity|アクティビティ)$/i,
     maxWidthRatio: 0.5,
@@ -412,6 +426,7 @@
       download: /^(download permissions|ダウンロード権限|ダウンロードの権限)$/i,
       description: /^(description|説明)$/i,
       shared: /^(shared|共有日|共有)$/i,
+      security: /^(security restrictions|security limitations|セキュリティの制限)$/i,
     },
   });
 
@@ -550,6 +565,9 @@
     breadcrumbContainer: '[role="navigation"],nav,[aria-label*="breadcrumb" i],[aria-label*="パンくず"]',
     /* Drive's own layout toggle (grid / list) */
     listLayout: /^((switch to )?list (layout|view)|リスト ?(レイアウト|表示)(に切り替え|に切り替える)?)$|^(list layout|リスト ?レイアウト)\b/i,
+    layoutGroup: /(list layout|grid layout|リスト ?レイアウト|グリッド ?レイアウト)/i,
+    listRadio: /^(list|list layout|リスト|リスト ?レイアウト)$/i,
+    gridRadio: /^(grid|grid layout|グリッド|グリッド ?レイアウト)$/i,
     gridLayout: /^((switch to )?grid (layout|view)|グリッド ?(レイアウト|表示)(に切り替え|に切り替える)?)$|^(grid layout|グリッド ?レイアウト)\b/i,
     /* URL patterns */
     homePath: /^\/drive(\/u\/\d+)?\/?(home)?\/?$/,
@@ -564,7 +582,16 @@
   S.folderUrl = (id) => location.origin + S.prefix() + '/folders/' + encodeURIComponent(id);
   S.currentFolderId = () => { const m = location.pathname.match(S.NAV.folderPath); return m ? m[1] : null; };
 
-  const btnText = (b) => norm(b.getAttribute('aria-label') && !norm(b.textContent) ? b.getAttribute('aria-label') : b.textContent);
+  // visible text without aria-hidden decorations (the "▾" / svg next to the folder name) and tooltips
+  const visText = (el) => {
+    let t = '';
+    for (const n of el.childNodes) {
+      if (n.nodeType === 3) t += n.nodeValue;
+      else if (n.nodeType === 1 && !n.matches('[aria-hidden="true"],[role="tooltip"],svg,style,script')) t += ' ' + visText(n) + ' ';
+    }
+    return t;
+  };
+  const btnText = (b) => { const v = norm(visText(b)); return norm(b.getAttribute('aria-label') && !v ? b.getAttribute('aria-label') : v); };
   const LISTISH = '[role="grid"],[role="row"],[role="gridcell"],[role="listbox"],[role="option"]';
   /** Breadcrumb segments [{label, el, root?}] or null. */
   S.breadcrumbs = () => {
@@ -577,9 +604,9 @@
     // header block (.S630me) of the same column, ~150px higher. So search the
     // column from below Google's banner down to just inside main.
     const top0 = Math.max(0, (document.querySelector('header[role="banner"],[role="banner"]') || { getBoundingClientRect: () => ({ bottom: 0 }) }).getBoundingClientRect().bottom - 2);
-    const inColumn = (r) => r.width > 0 && r.left >= mr.left - 8 && r.right <= mr.right + 8 && r.top >= top0 && r.top >= mr.top - 260 && r.top < mr.top + 200;
+    const inColumn = (r) => r.width > 0 && r.left >= mr.left - 8 && r.right <= mr.right + 8 && r.top + r.height / 2 >= top0 && r.top >= mr.top - 260 && r.top < mr.top + 200;
     const cands = [...document.querySelectorAll('[role="button"],button,a[href],[role="link"],[role="heading"],h1,h2')].filter((b) => {
-      if (S.isOurs(b) || b.closest(LISTISH) || b.closest(S.menu) || b.closest('[data-dxe-details],[role="complementary"],[role="banner"],[role="tree"],[role="dialog"]')) return false;
+      if (S.isOurs(b) || b.closest(LISTISH) || b.closest(S.menu) || b.closest('[data-dxe-details],[data-dxe-ui],[role="complementary"],[role="banner"],[role="tree"],[role="dialog"],[aria-hidden="true"]')) return false;
       if (b.matches('[role="heading"],h1,h2') && b.querySelector('[role="button"],button,a[href],[role="link"]')) return false; // prefer the button inside
       const t = btnText(b);
       if (!t || !rootRe.some((re) => re.test(t))) return false;
@@ -595,9 +622,9 @@
       if (!box) continue;
       const rr = rootBtn.getBoundingClientRect();
       const segs = [rootBtn, ...[...box.querySelectorAll('[role="button"],button,a[href],[role="link"]')]
-        .filter((b) => b !== rootBtn && isBtn(b) && !b.closest(LISTISH) && !b.contains(rootBtn) && !rootBtn.contains(b))]
+        .filter((b) => b !== rootBtn && isBtn(b) && !b.closest(LISTISH) && !S.isOurs(b) && !b.closest('[aria-hidden="true"],[role="toolbar"],[role="radiogroup"]') && !b.contains(rootBtn) && !rootBtn.contains(b))]
         .filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && Math.abs(r.top + r.height / 2 - (rr.top + rr.height / 2)) < 14 && r.left >= rr.left - 2; })
-        .filter((b) => (b === rootBtn ? btnText(b) : norm(b.textContent)) && !/^(…|\.\.\.|more|その他)$/i.test(btnText(b)) && (b === rootBtn || !b.querySelector('[role="button"],button')))
+        .filter((b) => (b === rootBtn ? btnText(b) : norm(visText(b))) && !/^(…|\.\.\.|more|その他)$/i.test(btnText(b)) && (b === rootBtn || !b.querySelector('[role="button"],button')))
         .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
       // drop non-breadcrumb buttons to the right that are far away (filters, layout toggles)
       const out = [];
@@ -607,7 +634,7 @@
         if (b !== rootBtn && r.left < rr.left) continue;
         if (r.left - lastRight > 60) break;
         lastRight = r.right;
-        const label = b === rootBtn ? btnText(b) : norm(b.textContent);
+        const label = b === rootBtn ? btnText(b) : norm(visText(b));
         const rootKey = out.length ? null : Object.keys(S.NAV.roots).find((k) => S.NAV.roots[k].test(label));
         out.push({ label, el: b, root: rootKey || null, id: b.getAttribute('data-id') || null });
       }
@@ -617,22 +644,41 @@
   };
 
   S.findLayoutButton = (re) => {
+    // real Drive: role=radiogroup aria-label="リスト レイアウトまたはグリッド レイアウト(Alt+V、L キーの順)"
+    // holding button role=radio aria-label="リスト" / "グリッド"
+    const wantList = re === S.NAV.listLayout;
+    for (const g of document.querySelectorAll('[role="radiogroup"]')) {
+      if (S.isOurs(g) || !S.NAV.layoutGroup.test(norm(g.getAttribute('aria-label')))) continue;
+      const r = [...g.querySelectorAll('[role="radio"]')].find((b) => (wantList ? S.NAV.listRadio : S.NAV.gridRadio).test(S.cleanLabel(b.getAttribute('aria-label') || b.textContent)));
+      if (r && S.isShown(r)) { S.lastLayoutStrategy = 'radiogroup'; return r; }
+    }
     for (const b of document.querySelectorAll('[role="button"],button,[role="radio"],[role="menuitemradio"],[role="tab"]')) {
       if (S.isOurs(b) || b.closest('[data-id]') || b.closest(LISTISH) || b.closest('[role="complementary"],[aria-hidden="true"],[role="banner"]')) continue;
       const l = norm(b.getAttribute('aria-label') || b.getAttribute('data-tooltip') || b.textContent);
-      if (re.test(l) && S.isShown(b)) return b;
+      if ((re.test(l) || re.test(S.cleanLabel(l))) && S.isShown(b)) { S.lastLayoutStrategy = 'label'; return b; }
     }
     return null;
   };
   /** Drive's keyboard shortcut "v" toggles list/grid; used when no button is found. */
+  /** Drive's keyboard shortcut for the layout toggle: "Alt+V, then L" (real
+      radiogroup label, 2026-10). Used when no button is found. */
   S.layoutShortcut = () => {
     const a = document.activeElement;
     if (a && a.closest && a.closest(S.editable)) return false;
     const target = (a && a !== document.body && !S.isOurs(a)) ? a : (scopeEl() || document.body);
-    const o = { key: 'v', code: 'KeyV', keyCode: 86, which: 86, bubbles: true, cancelable: true, composed: true };
-    for (const type of ['keydown', 'keypress', 'keyup']) target.dispatchEvent(new KeyboardEvent(type, type === 'keypress' ? { ...o, charCode: 118 } : o));
-    S.lastLayoutStrategy = 'shortcut-v';
+    S.pressSeq(target, S.KEYSEQ.layout);
+    S.lastLayoutStrategy = 'shortcut-alt-v-l';
     return true;
+  };
+  S.KEYSEQ = {
+    layout: [{ key: 'v', code: 'KeyV', keyCode: 86, altKey: true }, { key: 'l', code: 'KeyL', keyCode: 76 }],
+    details: [{ key: 'v', code: 'KeyV', keyCode: 86, altKey: true }, { key: 'd', code: 'KeyD', keyCode: 68 }],
+  };
+  S.pressSeq = (target, seq) => {
+    for (const k of seq) {
+      const o = { key: k.key, code: k.code, keyCode: k.keyCode, which: k.keyCode, altKey: !!k.altKey, ctrlKey: !!k.ctrlKey, shiftKey: !!k.shiftKey, bubbles: true, cancelable: true, composed: true };
+      for (const type of ['keydown', 'keypress', 'keyup']) target.dispatchEvent(new KeyboardEvent(type, type === 'keypress' ? { ...o, charCode: k.key.length === 1 ? k.key.charCodeAt(0) : 0 } : o));
+    }
   };
 
   /* ---------- suggestions (Home / My Drive) ---------- */
@@ -679,7 +725,8 @@
   S.keepUiText = (t) => {
     const all = [...Object.values(S.LABELS), ...Object.values(D.labels), D.tabDetails, D.tabActivity, D.closeButton, D.headings,
       ...Object.values(S.NAV.roots), S.NAV.listLayout, S.NAV.gridLayout, S.SUGGEST.headings, S.SUGGEST.keep, D.toolbarDetails];
-    return all.some((re) => re.test(t)) || D.panelAriaLabels.includes(t);
+    const c = S.cleanLabel(t);
+    return all.some((re) => re.test(t) || (c && re.test(c))) || D.panelAriaLabels.includes(t);
   };
 
   /* ---------- right-side panel heuristic (0.3.0) ---------- */

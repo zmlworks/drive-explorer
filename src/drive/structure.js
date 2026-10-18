@@ -80,7 +80,10 @@
         if (n.startsWith('aria-')) {
           if (n === 'aria-label') {
             const v = norm(a.value);
-            const hide = c.inItem || el.hasAttribute('data-id') ||
+            // pane: people (gridcells / avatars) and "<file name> を開く" links must never leak
+            const panelHide = c.inPanel && !SEL.keepUiText(v) && !SEL.labelKey(v) &&
+              !(role && /^(button|heading|region|listbox|grid|tablist|tab|complementary|main|status|toolbar|radiogroup|radio)$/.test(role) && v.length <= 60 && !/@/.test(v));
+            const hide = c.inItem || el.hasAttribute('data-id') || panelHide ||
               (c.strict && !SEL.keepUiText(v) && !el.closest('[role="toolbar"],[role="menu"],[role="tablist"]') && !(role && /button|link|heading/.test(role) && SEL.keepUiText(v)));
             parts.push(hide ? `aria-label=‹${v.length}›` : `aria-label=${v.length <= 80 ? JSON.stringify(red(v)) : '‹' + v.length + '›'}`);
           } else if (/^aria-(selected|expanded|checked|pressed|haspopup|hidden|disabled|level|current|orientation|modal|live)$/.test(n)) aria.push(`${n}=${a.value}`);

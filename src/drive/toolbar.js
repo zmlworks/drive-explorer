@@ -20,21 +20,44 @@
   let parents = {};
   try { parents = JSON.parse(sessionStorage.getItem(PKEY) || '{}'); } catch (e) { parents = {}; }
   let pending = null;
+  // 0.3.2 fix ("facing mirrors" address bar): Drive may already have switched the
+  // URL to the new folder by the time 'dblclick' fires, so reading the current
+  // folder there made the folder its own parent → the learned chain repeated its
+  // name until the guard. The parent is now taken at the first mousedown.
+  const here = () => SEL.currentFolderId() || (SEL.NAV.myDrivePath.test(location.pathname) ? 'root' : null);
+  let downAt = { p: null, t: 0 };
+  window.addEventListener('mousedown', (e) => { if (e.detail <= 1) downAt = { p: here(), t: performance.now() }; }, true);
   window.addEventListener('dblclick', (e) => {
     const item = SEL.findItem(e.target);
     if (!item || !SEL.isFolder(item)) return;
     const n = item.querySelector('[data-dxe-part="name"]');
-    pending = { id: SEL.itemId(item), n: SEL.norm(n ? n.textContent : (SEL.analyzeTile(item).name || {}).textContent || ''),
-      p: SEL.currentFolderId() || (SEL.NAV.myDrivePath.test(location.pathname) ? 'root' : null) };
+    const id = SEL.itemId(item);
+    const p = performance.now() - downAt.t < 1500 ? downAt.p : here();
+    if (!id || p === id) return;
+    pending = { id, n: SEL.norm(n ? n.textContent : (SEL.analyzeTile(item).name || {}).textContent || ''), p };
   }, true);
   const learn = () => {
     const id = SEL.currentFolderId();
     if (pending && id === pending.id) {
-      parents[id] = { p: pending.p, n: pending.n };
-      try { sessionStorage.setItem(PKEY, JSON.stringify(parents)); } catch (e) { /* ignore */ }
+      if (pending.p !== id) {
+        parents[id] = { p: pending.p, n: pending.n };
+        try { sessionStorage.setItem(PKEY, JSON.stringify(parents)); } catch (e) { /* ignore */ }
+      }
       pending = null;
     }
   };
+  // drop any self/cyclic entries a previous version may have stored this session
+  (() => {
+    const bad = Object.keys(parents).filter((id) => {
+      if (!parents[id] || typeof parents[id] !== 'object' || parents[id].p === id) return true;
+      const seen = new Set([id]);
+      for (let cur = parents[id].p; cur && parents[cur]; cur = parents[cur].p) { if (seen.has(cur)) return true; seen.add(cur); }
+      return false;
+    });
+    bad.forEach((id) => delete parents[id]);
+    const changed = bad.length > 0;
+    if (changed) try { sessionStorage.setItem(PKEY, JSON.stringify(parents)); } catch (e) { /* ignore */ }
+  })();
 
   /* ---------- navigation ---------- */
   function navCrumb(c) {
@@ -63,8 +86,10 @@
 
   /** Address model: [{label, go?}] + display text */
   function pathModel() {
-    const crumbs = SEL.breadcrumbs();
+    let crumbs = SEL.breadcrumbs();
     const segs = [];
+    // never repeat a segment (transient duplicate nodes while Drive re-renders)
+    if (crumbs) crumbs = crumbs.filter((c, i) => i === 0 || (c.label !== crumbs[i - 1].label && !crumbs.slice(0, i).some((o) => o.el === c.el)));
     if (crumbs && crumbs.length) {
       const last = crumbs.length - 1;
       crumbs.forEach((c, i) => {
@@ -83,7 +108,8 @@
     if (id) {
       const chain = [];
       let cur = id, guard = 0, rooted = false;
-      while (cur && parents[cur] && guard++ < 40) { chain.unshift({ id: cur, n: parents[cur].n }); if (parents[cur].p === 'root') { rooted = true; break; } cur = parents[cur].p; }
+      const seen = new Set();
+      while (cur && parents[cur] && !seen.has(cur) && guard++ < 40) { seen.add(cur); chain.unshift({ id: cur, n: parents[cur].n }); if (parents[cur].p === 'root') { rooted = true; break; } cur = parents[cur].p; }
       if (!chain.length) chain.push({ id, n: SEL.norm(document.title.replace(/\s+[-–]\s+Google (Drive|ドライブ)\s*$/i, '')) || '…' });
       segs.push({ label: rooted ? '/' : '…', root: true, go: rooted ? () => location.assign(SEL.myDriveUrl()) : null });
       chain.forEach((c, i) => segs.push({ label: c.n, go: i === chain.length - 1 ? null : () => location.assign(SEL.folderUrl(c.id)) }));
@@ -224,6 +250,7 @@
   }
 
   let lastSig = '';
+  let settle = { sig: '', t: 0, first: 0, timer: 0 };
   function render() {
     if (!host) return;
     learn();
@@ -237,6 +264,15 @@
     const m = pathModel();
     const sig = m.segs.map((s) => s.label + (s.go ? '>' : '')).join('|') + location.pathname;
     if (sig === lastSig) return;
+    // While Drive is navigating, its header goes through transient states. Only
+    // repaint the address once the same model was seen twice ~200ms apart (or
+    // after 1.5s at the latest), so it never flickers through odd paths.
+    const now = performance.now();
+    const overdue = settle.first && now - settle.first > 1500;
+    if (sig !== settle.sig && !overdue) { clearTimeout(settle.timer); settle = { sig, t: now, first: settle.first || now }; settle.timer = setTimeout(() => render(), 220); return; }
+    if (sig === settle.sig && now - settle.t < 180 && !overdue) { clearTimeout(settle.timer); settle.timer = setTimeout(() => render(), 220); return; }
+    clearTimeout(settle.timer);
+    settle = { sig, t: now, first: 0, timer: 0 };
     lastSig = sig;
     const addr = bar.querySelector('.addr');
     addr.textContent = '';

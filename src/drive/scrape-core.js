@@ -24,7 +24,7 @@
     const walk = (n) => {
       if (n.nodeType === 3) { const t = norm(n.nodeValue); if (t) parts.push(t); return; }
       if (n.nodeType !== 1) return;
-      if (n.matches('[aria-hidden="true"],script,style,svg,[role="tooltip"]') || isUiButton(n)) return;
+      if (n.matches('[aria-hidden="true"],script,style,svg,[role="tooltip"],[role="status"]') || isUiButton(n)) return;
       if (n.tagName === 'IMG') { if (n.alt) alts.push(norm(n.alt)); return; }
       for (const c of n.childNodes) walk(c);
     };
@@ -57,7 +57,24 @@
       const m = norm(el.getAttribute('aria-label')).match(/^([^:：]{1,30})[:：]\s*(.{1,300})$/);
       if (m && SEL.labelKey(m[1])) cands.push({ el, label: m[1], value: m[2], key: SEL.labelKey(m[1]), aria: true });
     });
-    let pairs = cands.filter((c) => c.aria || !cands.some((o) => o !== c && !o.aria && c.el.contains(o.el)));
+    // Section heading + body (real Drive odp/embed pane, 2026-10):
+    //   h2 "アクセスできるユーザー" + people grid (td role=gridcell aria-label="共有していません" / names)
+    //   h2 > span "セキュリティの制限" + div "適用されている制限はありません"
+    p.querySelectorAll('h1,h2,h3,h4,[role="heading"]').forEach((h) => {
+      const label = textOf(h, false);
+      const key = SEL.labelKey(label);
+      if (!key || cands.some((c) => c.key === key)) return;
+      const parts = [];
+      for (let n = h.nextElementSibling, i = 0; n && i < 3; n = n.nextElementSibling, i++) {
+        if (n.matches('h1,h2,h3,h4,[role="heading"]')) break;
+        let v = textOf(n);
+        if (!v) v = [...n.querySelectorAll('[role="gridcell"][aria-label],[role="img"][aria-label],[data-tooltip][aria-label]')].map((x) => norm(x.getAttribute('aria-label'))).filter(Boolean).join(', ');
+        if (v && !D.ignoreText.test(v)) parts.push(v);
+      }
+      const value = parts.join(' — ').slice(0, 400);
+      if (value) cands.push({ el: h.parentElement || h, label, value, key, heading: true });
+    });
+    let pairs = cands.filter((c) => c.aria || c.heading || !cands.some((o) => o !== c && !o.aria && !o.heading && c.el.contains(o.el)));
     let strategy = 'structure';
     if (pairs.filter((x) => x.key).length < 2) {
       const lines = (p.innerText || p.textContent || '').split('\n').map(norm).filter(Boolean);
@@ -69,7 +86,8 @@
       if (viaLines.length > pairs.filter((x) => x.key).length) { pairs = viaLines; strategy = 'lines'; }
     }
     const seen = new Set();
-    pairs = pairs.filter((x) => { const k = x.label.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+    // same label twice is real (e.g. two "サイズ" rows for an image); drop exact duplicates only
+    pairs = pairs.filter((x) => { const k = x.label.toLowerCase() + '\u0000' + x.value; if (seen.has(k)) return false; seen.add(k); return true; })
       .map(({ label, value, key }) => ({ label, value, key }));
     let title = '';
     const h = p.querySelector(D.hooks.title) || p.querySelector('[role="heading"],h1,h2');

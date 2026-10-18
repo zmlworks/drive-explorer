@@ -37,12 +37,13 @@ const check = (name, ok, extra = '') => { results.push({ name, ok, extra }); con
 
 const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--font-render-hinting=none'] });
 
-async function openDrive(params, settings) {
+async function openDrive(params, settings, pre) {
   const ctx = await browser.newContext({ viewport: { width: 1180, height: 760 }, deviceScaleFactor: 1, colorScheme: params.theme === 'dark' ? 'dark' : 'light' });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log('pageerror', e.message));
   page.on('console', (m) => { if (process.env.VERBOSE) console.log('console', m.text()); });
   await page.goto('file://' + path.join(ROOT, 'test', 'mock-drive.html') + '?' + new URLSearchParams(params));
+  if (pre) await page.evaluate(pre);
   await page.addScriptTag({ content: shim(settings) });
   for (const css of driveCss) await page.addStyleTag({ content: fs.readFileSync(path.join(ROOT, css), 'utf8') });
   for (const js of driveJs) await page.addScriptTag({ content: fs.readFileSync(path.join(ROOT, js), 'utf8') });
@@ -219,8 +220,10 @@ for (const lang of ['en', 'ja']) {
       if (lang === 'en' && theme === 'dark') await page.screenshot({ path: path.join(OUT, `08-context-menu-with-properties-${tag}.png`) });
       await menuItem(page, 'properties').click();
       const st = await waitProps(page);
-      const want = lang === 'ja' ? ['種類', 'サイズ', '使用容量', '場所', '所有者', '更新日時', '最終閲覧', '作成日時', 'アクセス', '2 人と共有', 'ラベル'] : ['Type', 'Size', 'Storage used', 'Location', 'Owner', 'Modified', 'Opened', 'Created', 'Access', 'Shared with 2 people', 'Labels'];
+      const want = lang === 'ja' ? ['種類', 'サイズ', '使用容量', '場所', '所有者', '更新日時', '最終閲覧', '作成日時', 'アクセス', 'Aiko, Ben', 'セキュリティ', '適用されている制限はありません'] : ['Type', 'Size', 'Storage used', 'Location', 'Owner', 'Modified', 'Opened', 'Created', 'Access', 'Aiko, Ben', 'Security', 'No restrictions applied'];
+      const bad = ['版を管理', 'Manage versions', 'サイドバーを閉じる', 'Close sidebar', '読み込んでいます', 'Loading...', 'オフライン', 'offline', '説明を追加', 'Add description'].filter((w) => st && st.body.includes(w));
       const miss = want.filter((w) => !st.body.includes(w));
+      if (bad.length) miss.push(...bad.map((b) => 'UNWANTED:' + b));
       const titleOk = lang === 'ja' ? /^議事録 2026-10-15\.docx のプロパティ$/.test(st.title) : /^Meeting notes 2026-10-15 Properties$/.test(st.title);
       check(`[${tag}] Properties dialog fields (known + unknown label)`, st && !st.failed && !miss.length && titleOk, 'missing=' + miss.join(',') + ' title=' + st.title);
       await page.waitForTimeout(500);
@@ -514,14 +517,15 @@ for (const lang of ['en', 'ja']) {
     await ctx.close();
   }
   // toolbar goes into the header block (.S630me) and main keeps its bottom on screen
-  for (const hdrfixed of [0, 1]) {
-    const { ctx, page } = await openDrive({ hl: 'en', nolog: 1, ...(hdrfixed ? { hdrfixed: 1 } : {}) }, {});
+  for (const hdrauto of [0, 1]) {
+    const hdrfixed = !hdrauto;
+    const { ctx, page } = await openDrive({ hl: 'en', nolog: 1, ...(hdrauto ? { hdrauto: 1 } : {}) }, {});
     await page.waitForTimeout(500);
     const r = await page.evaluate(() => { const m = document.querySelector('[role=main]').getBoundingClientRect(); const h = document.getElementById('dxe-toolbar-host').getBoundingClientRect();
       const box = document.querySelector('.PolqHc').getBoundingClientRect(); return { mode: DXE.toolbarStats.mode, comp: DXE.toolbarStats.compensated, overlap: h.bottom > m.top + 2, mainBottom: Math.round(m.bottom), boxBottom: Math.round(box.bottom), vh: innerHeight }; });
     check(`[real] toolbar placement ${hdrfixed ? '(fixed-height header → before main, height compensated)' : '(end of header block)'}`,
       r.mode === (hdrfixed ? 'before-main' : 'header') && !r.overlap && r.mainBottom <= r.boxBottom + 1 && r.mainBottom <= r.vh, JSON.stringify(r));
-    if (!hdrfixed) await page.screenshot({ path: path.join(OUT, '30-real-structure-toolbar-in-header-en-light.png') });
+    if (hdrfixed) await page.screenshot({ path: path.join(OUT, '30-real-structure-toolbar-en-light.png') });
     await ctx.close();
   }
   // Properties per pane-body variant: same-origin iframe (default), inline, unreadable iframe (partial)
@@ -566,12 +570,59 @@ for (const lang of ['en', 'ja']) {
     check('[structure] Ctrl+Alt+Shift+S captures the page structure', /captured via hotkey/.test(cap) && /## last native menus opened by Drive Explorer \([1-9]/.test(cap), cap.length + ' chars');
     await ctx.close();
   }
-  // no list/grid buttons → Drive's "v" shortcut
+  // no list/grid buttons → Drive's "Alt+V, L" shortcut
   {
     const { ctx, page } = await openDrive({ hl: 'en', nolog: 1, nolay: 1 }, {});
     await page.locator('#dxe-toolbar-host >> button[data-id="list"]').click();
+    await page.waitForTimeout(400);
+    check('[real] view switch falls back to Drive\'s "Alt+V, L" shortcut', (await page.evaluate(() => window.__actions)).includes('LAYOUT-TOGGLE-ALTV-L'), (await page.evaluate(() => window.__actions)).join());
+    await ctx.close();
+  }
+  // 0.3.2: layout radiogroup ("リスト"/"グリッド" radios with a shortcut-suffixed group label)
+  for (const lang of ['ja', 'en']) {
+    const { ctx, page } = await openDrive({ hl: lang, nolog: 1, view: 'grid' }, {});
+    await page.locator('#dxe-toolbar-host >> button[data-id="list"]').click();
     await page.waitForTimeout(300);
-    check('[real] view switch falls back to Drive\'s "v" shortcut', (await page.evaluate(() => window.__actions)).includes('LAYOUT-TOGGLE-V'));
+    const r = await page.evaluate(() => ({ a: window.__actions.slice(), lb: DXE.SEL.findLayoutButton('list'), gb: DXE.SEL.findLayoutButton('grid') }));
+    check(`[real-${lang}] layout radiogroup buttons found (list/grid radios)`, r.a.includes('LAYOUT list') && !r.a.includes('LAYOUT-TOGGLE-ALTV-L'), r.a.join());
+    await ctx.close();
+  }
+  // 0.3.2: labels with shortcut suffixes ("共有 Ctrl+Alt+A", "名前を変更, Ctrl+Alt+E", "…(Alt+V、D キーの順)")
+  {
+    const { ctx, page } = await openDrive({ hl: 'ja', nolog: 1 }, {});
+    const r = await page.evaluate(() => {
+      const c = DXE.SEL.cleanLabel;
+      return [c('共有 Ctrl+Alt+A'), c('ゴミ箱に移動 Delete'), c('名前を変更, Ctrl+Alt+E'), c('コピーを作成, Ctrl+C キーに続いて Ctrl+V キー'), c('詳細を非表示(Alt+V、D キーの順)'), c('Share Ctrl+Alt+A'), c('Make a copy, Ctrl+C then Ctrl+V'), c('Plan B'), c('Move to trash Delete')].join('|');
+    });
+    check('[real] cleanLabel strips Drive\'s shortcut hints', r === '共有|ゴミ箱に移動|名前を変更|コピーを作成|詳細を非表示|Share|Make a copy|Plan B|Move to trash', r);
+    await ctx.close();
+  }
+  // 0.3.2 mirror bug: Drive switches the URL BEFORE dblclick fires → no self-parent, no repeated segments
+  {
+    const { ctx, page } = await openDrive({ hl: 'en', nolog: 1 }, {}, () => sessionStorage.setItem('dxe-parents', JSON.stringify({ F1: { p: 'F1', n: 'Loop' }, F2: { p: 'F3', n: 'A' }, F3: { p: 'F2', n: 'B' }, F4: { p: 'root', n: 'Ok' } })));
+    const c0 = await page.evaluate(() => JSON.parse(sessionStorage.getItem('dxe-parents') || '{}'));
+    check('[mirror] self/cyclic entries dropped from the session folder cache at startup', !c0.F1 && !c0.F2 && !c0.F3 && c0.F4 && c0.F4.n === 'Ok', JSON.stringify(c0));
+    const r = await page.evaluate(async () => {
+      window.__fid = null;
+      DXE.SEL.currentFolderId = () => window.__fid;
+      const it = [...document.querySelectorAll('[data-id]')].find((x) => (x.dataset.mName || '') === 'Project files');
+      const fid = DXE.SEL.itemId(it);
+      const seen = [];
+      const host = document.getElementById('dxe-toolbar-host');
+      const read = () => { const t = [...host.shadowRoot.querySelectorAll('.seg')].map((x) => x.textContent.trim()).filter(Boolean).join('/'); seen.push(t); };
+      new MutationObserver(read).observe(host.shadowRoot, { subtree: true, childList: true, characterData: true });
+      // Drive: the URL is already the folder's when 'dblclick' fires, and the breadcrumbs vanish for a moment
+      it.addEventListener('mouseup', (e) => { if (e.detail === 2) { window.__fid = fid; history.pushState(null, '', location.search + '#f'); document.getElementById('title').innerHTML = ''; } }, true);
+      return { fid, ok: !!it };
+    });
+    await tileByName(page, 'Project files').dblclick();
+    await page.waitForTimeout(400);
+    await page.evaluate(() => { window.dispatchEvent(new PopStateEvent('popstate')); DXE.toolbar.render(); });
+    await page.waitForTimeout(2200);
+    const r2 = await page.evaluate((fid) => { const m = JSON.parse(sessionStorage.getItem('dxe-parents') || '{}'); return { entry: m[fid] || null, text: DXE.pathText() }; }, r.fid);
+    const segs = r2.text.split('/').filter(Boolean);
+    check('[mirror] dblclick with URL switched first: no self-parent, folder name shown once', r.ok && (!r2.entry || r2.entry.p !== r.fid) && segs.filter((x) => x === 'Project files').length <= 1 && new Set(segs).size === segs.length, JSON.stringify({ r, r2 }));
+    await page.screenshot({ path: path.join(OUT, '35-after-folder-dblclick-en-light.png') });
     await ctx.close();
   }
   // structure dump with the real pane open (same-origin iframe), labels kept, values stripped
@@ -582,7 +633,7 @@ for (const lang of ['en', 'ja']) {
     await page.waitForTimeout(900);
     const dump = await page.evaluate(() => DXE.structure.dump());
     const leaks = ['beach.png', 'mountains.jpg', '議事録', 'README', '1AbC', 'プロジェクト資料', 'zoe@example.com', '"18 KB"', '"自分"', 'Aiko'].filter((x) => dump.includes(x));
-    const has = ['## details pane (deep', 'iframe src=', 'sameOrigin=true', '"種類"', '"サイズ"', '"場所"', '## header above role=main (1', '# native toolbar', '## path from role=main to the first file item', 'data-has-sections', '# details pane: open(Drive layout)=true headerType="画像"'].filter((x) => !dump.includes(x));
+    const has = ['## details pane (deep', 'iframe src=', 'sameOrigin=true', '"種類"', '"サイズ"', '"使用容量"', '## header above role=main (1', '# native toolbar', '## path from role=main to the first file item', 'data-has-sections', '# details pane: open(Drive layout)=true headerType="画像"'].filter((x) => !dump.includes(x));
     check('[structure] real-pane dump: labels kept, values/names stripped, iframe walked, focus sections', !leaks.length && !has.length && dump.length < 270000, 'leaks=' + leaks.join(',') + ' missing=' + has.join(' | ') + ' len=' + dump.length);
     fs.writeFileSync(path.join(OUT, 'page-structure-sample.txt'), dump);
     await ctx.close();

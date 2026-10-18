@@ -1,4 +1,4 @@
-# Drive Explorer (Win11 style) — v0.3.1 (prototype)
+# Drive Explorer (Win11 style) — v0.3.2 (prototype)
 
 Google ドライブを Windows 11 のエクスプローラー風にする Chrome 拡張機能（Manifest V3）です。
 A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 File Explorer.
@@ -12,7 +12,7 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 
 ### 機能
 1. **中アイコン表示** — ドライブの「グリッド表示」を Win11 の「中アイコン」風に変更します（約 96×110px の小さなタイル、64px のサムネイル/アイコン、ファイル名はアイコンの**下**に中央揃えで 2 行まで、ホバー/選択時の半透明の青い枠）。ドライブ自身の DOM の見た目を変えるだけなので、並べ替え・選択・ダブルクリックで開く・ドラッグ＆ドロップはドライブ標準のまま動きます。
-2. **Windows 11 風の右クリックメニュー** — ファイル/フォルダの右クリックで、角丸・アイコン・区切り線・ショートカット表示付きのメニューを表示します。項目：開く／新しいタブで開く／ダウンロード／名前の変更 (F2)／リンクをコピー／共有／移動／ショートカットを追加／スター／コピーを作成／ファイル情報／削除／ドライブのメニューを表示。各項目はドライブ**本来の機能**を実行します（ドライブ標準のメニューを見えない状態で開いて該当項目をクリック）。日本語・英語どちらの UI でも動作します。Esc・メニュー外クリック・スクロールで閉じます。**Shift + 右クリック**でいつでもドライブ標準メニューを表示できます。F2 で選択中の項目の名前を変更できます。
+2. **Windows 11 風の右クリックメニュー** — ファイル/フォルダの右クリックで、角丸・アイコン・区切り線・ショートカット表示付きのメニューを表示します。項目：開く／新しいタブで開く／ダウンロード／名前の変更 (F2)／リンクをコピー／共有／移動／ショートカットを追加／スター／コピーを作成／ファイル情報／削除／ドライブのメニューを表示。各項目はドライブ**本来の機能**を実行します（ドライブ標準のメニューを見えない状態で開いて該当項目をクリック）。日本語・英語どちらの UI でも動作します。Esc・メニュー外クリック・スクロールで閉じます。**Shift + 右クリック**は本拡張では何もしません（実際のドライブでは Chrome のメニューが出ます）。ドライブ標準のメニューは「ドライブのメニューを表示」から開けます。F2 で選択中の項目の名前を変更できます。
 3. **ドライブの詳細パネルを表示しない**（0.2.0、既定でオン）— クリック/選択時に右側に開く「詳細（ファイル情報）」パネルを見えなくし、ファイル一覧の幅も元のままにします。パネル自体はドライブの中で動き続けるので、ドライブの他の機能には影響しません。ポップアップでオフにできます（オンの間は、ドライブ標準メニューの「ファイル情報 → 詳細」で開いたパネルも見えません）。
 4. **プロパティ**（0.2.0）— 右クリックメニューの最後の項目「プロパティ」（または選択中に **Alt+Enter**）で、Windows 11 風のプロパティ ウィンドウ（「<名前> のプロパティ」）を表示します。全般タブ：大きなアイコンと名前、種類、場所、サイズ、使用容量、作成日時、更新日時、最終閲覧、所有者、アクセス（共有の概要）。詳細タブ：ドライブが表示したすべての項目。タイトルバーでドラッグでき、Esc・OK・キャンセル・× で閉じます。ライト/ダークに追従します。
    - 情報は、ドライブの詳細パネルを**見えない状態で**開いて読み取り（ファイル情報 → 詳細、または ⓘ「詳細を表示」ボタン）、読み終わったら閉じます（元から開いていた場合はそのまま）。未知のラベルもそのまま表示します。読み取れなかった場合はメッセージを表示します。
@@ -32,7 +32,7 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 17. **ページ構造の記録の改善**（0.3.1）— 詳細パネル（**ラベルの文字は残し、値は除去**）、一覧の上のヘッダー、`role=main` から最初の項目までの経路と最初の数項目、開いているメニュー、本拡張が裏で開いたドライブのメニューの記録、検出結果の要約を、深さ 25〜40 で先頭に出力します。iframe（ホスト名・パスと同一オリジンかどうか）も出力し、同一オリジンなら中身も辿ります。メニューやパネルを開いたままで記録できるよう、**Ctrl+Alt+Shift+S** またはポップアップの「5 秒後に記録」で保存し、「最後の記録をコピー」でコピーします。
 
 ### インストール（パッケージ化されていない拡張機能として読み込む）
-1. `drive-explorer-0.3.1.zip` を任意のフォルダに展開します（中に `manifest.json` があるフォルダ）。
+1. `drive-explorer-0.3.2.zip` を任意のフォルダに展開します（中に `manifest.json` があるフォルダ）。
 2. Chrome で `chrome://extensions` を開きます。
 3. 右上の **デベロッパー モード** をオンにします。
 4. **「パッケージ化されていない拡張機能を読み込む」** をクリックし、展開したフォルダ（`manifest.json` があるフォルダ）を選択します。
@@ -45,8 +45,9 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 ### 既知の制限
 - 実際のドライブでは未検証です。ドライブのクラス名は難読化されて頻繁に変わるため、`role` / `aria-*` / `data-id` / `data-target` などの比較的安定した属性と、サイズ・テキストのヒューリスティックで要素を探しています。ドライブの更新で壊れる可能性があります（修正箇所は `src/drive/selectors.js` に集約）。
 - 中アイコン表示はグリッド表示のみが対象です（リスト表示は変更しません）。ドライブの行（row）構造を 1 本の折り返しフローに並べ替えているため、**矢印キーでの移動**はドライブ内部の行の区切りに従い、見た目と一致しないことがあります。
-- メニュー項目は「見えない状態でドライブ標準のメニューを開いてクリックする」方式です。ドライブが合成イベントを無視した場合は、選択時のツールバーのボタン → ドライブのキーボードショートカット → 代替処理（リンク生成など）の順に試します。それでも失敗した場合はトーストを表示するので「ドライブのメニューを表示」または Shift + 右クリックを使ってください。
-- ショートカット表示（Z・S・. など）はドライブ自身の 1 キーショートカットです。F2（名前の変更）は本拡張が追加しています。
+- メニュー項目は「見えない状態でドライブ標準のメニューを開いてクリックする」方式です。ドライブが合成イベントを無視した場合は、選択時のツールバーのボタン → ドライブのキーボードショートカット → 代替処理（リンク生成など）の順に試します。それでも失敗した場合はトーストを表示するので「ドライブのメニューを表示」を使ってください。
+- **Shift + 右クリックでは Chrome（ブラウザ）の標準メニューが出ます。これは想定どおりの動作です**（本拡張は Shift 付きの右クリックには何もしません。リンクのコピーや検証などブラウザのメニューを使いたいとき用）。**ドライブ自身のメニューを出すには、本拡張のメニューの「ドライブのメニューを表示」を使ってください。**
+- ショートカット表示はドライブ自身のショートカットです（実際のドライブの表示に合わせ 0.3.2 で 共有 Ctrl+Alt+A・移動 Ctrl+Alt+M・名前を変更 Ctrl+Alt+E・詳細 Alt+V → D に更新）。F2（名前の変更）は本拡張が追加しています。
 - 「スター」は付ける/外すを自動で切り替えます（ドライブのメニューにある方を実行）。
 - 共有ドライブ・ゴミ箱・検索結果などではドライブのメニュー項目が異なり、一部の項目が実行できない場合があります（例：ゴミ箱の「復元」は「ドライブのメニューを表示」から）。
 - 「新しいタブで開く」は `https://drive.google.com/open?id=…`（フォルダは `/drive/folders/…`）を開きます。`/u/N/` のアカウント番号は引き継ぎます。
@@ -55,6 +56,7 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 - プロパティの日付などの書式はドライブの表示そのままです（Windows のような「サイズ（バイト数）」は出ません）。名前欄は読み取り専用です（名前の変更は F2）。複数選択時のプロパティには未対応です。
 - ドライブ本体が暗くならない場合：本拡張はドライブ自体を暗くしません。ドライブの歯車 → 設定 → 全般 → デザイン（外観）で「ダーク」を選んでください（この設定がまだ提供されていないアカウントもあります）。
 - ダークモード（エディタ）：Chromium 版のドキュメントでは画像も `<canvas>` に描画されるため、**文書内の画像は反転したまま**になります（DocsAfterDark など他のフィルタ方式と同じ制限）。ツールバーなど UI 全体も反転し、背景は純黒になります。表示のちらつきを防ぐため、docs.google.com の localStorage に小さなフラグ（`dxe-dark-docs` など）を保存します。
+- **0.3.2 で 2 回目のダンプ（プロパティ実行後のページ構造／ドライブのメニューを開いた状態）に合わせました**：詳細パネル本体は同一オリジンの iframe（`drive.google.com/odp/embed`）で、「ファイルの詳細」の `role=listbox` / `role=option`、見出し付きの「アクセスできるユーザー」「セキュリティの制限」、表示切り替えの `role=radiogroup`（リスト/グリッド）、ショートカット付きのラベル（「共有 Ctrl+Alt+A」「名前を変更, Ctrl+Alt+E」）、ドライブのメニュー（`ファイル メニュー`）。**まだ不明**：サブフォルダでのパンくずの構造、ドライブのメニューのサブメニュー（共有 ▸ / 整理 ▸ / ファイル情報 ▸）の中身、ファイル項目の内部構造、英語 UI のラベル、2 つ目の「サイズ」行の意味。
 - **0.3.1 で実際のドライブの構造（2 つのダンプ）に合わせたのは、詳細パネル・ヘッダー（パンくず/ツールバーの位置）・右側のサイドパネル/文字起こしの除外です。** 詳細パネル本体の中身（iframe かどうか、ラベルの文字）、ファイル項目の内部構造、パンくずのボタンの種類、表示切り替えボタンのラベル、ドライブのメニュー項目、「おすすめ」の見出しはダンプに含まれておらず、まだ推測です。パネル本体が drive/docs.google.com 以外のオリジンの iframe の場合は読み取れず、名前と種類だけになります（権限を増やさない方針のため）。
 - **0.3.0 の新機能は模擬ページでのみ確認済み**で、実際のドライブではヒューリスティックです：パンくずリストの検出（マイドライブ等のボタンから同じ行のボタンを並べる）、ドライブのレイアウト切り替えボタンのラベル、「おすすめ」の見出し、Gemini チップの aria-label、右側パネルの位置と幅、ファイル種類の判定（aria-label・アイコン・拡張子）。
 - アドレス バー：パンくずが見つからない場合は、このセッションで開いたフォルダの記録 → ページタイトルの順で表示します（共有アイテムなどでは `…/フォルダ` になることがあります）。↑ で親が分からない場合はマイドライブへ移動します。
@@ -77,7 +79,7 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 
 ### Features
 1. **Medium icons view** — restyles Drive's own *Grid view* like Win11 Explorer's "Medium icons": compact ~96×110px tiles, 64px thumbnail/icon, file name centred **below** the icon wrapping to 2 lines (Drive moved names above thumbnails in Feb 2026), hover highlight and translucent blue selection box. Drive's DOM is only restyled, never replaced, so native sorting, selection, double-click-to-open and drag & drop keep working.
-2. **Windows 11 style context menu** — right-clicking a file/folder shows a rounded Win11-looking menu with icons, separators and shortcut hints: Open, Open in new tab, Download, Rename (F2), Copy link, Share, Move, Add shortcut, Star, Make a copy, File information, Delete, plus **Show Drive menu** (like Win11's "Show more options"). Each item triggers Drive's **real** action by opening Drive's native menu invisibly and clicking the matching item (labels matched in English and Japanese). Esc, outside click or scroll closes it. **Shift + right-click** always shows Drive's own menu. **F2** renames the selected item.
+2. **Windows 11 style context menu** — right-clicking a file/folder shows a rounded Win11-looking menu with icons, separators and shortcut hints: Open, Open in new tab, Download, Rename (F2), Copy link, Share, Move, Add shortcut, Star, Make a copy, File information, Delete, plus **Show Drive menu** (like Win11's "Show more options"). Each item triggers Drive's **real** action by opening Drive's native menu invisibly and clicking the matching item (labels matched in English and Japanese). Esc, outside click or scroll closes it. **Shift + right-click** is passed through untouched (on real Drive this shows Chrome's browser menu); use **Show Drive menu** for Drive's own menu. **F2** renames the selected item.
 3. **Hide Drive's details side panel** (0.2.0, default on) — the right-hand "Details" pane that opens on click/selection is kept invisible and the file list keeps its full width. The pane still lives inside Drive (it's only taken out of the layout and made transparent), so nothing else in Drive breaks. Toggle in the popup (while on, a pane opened via Drive's own File information → Details is hidden too).
 4. **Properties** (0.2.0) — last item of the context menu, or **Alt+Enter** on the selection: a Windows 11 style "<name> Properties" window. General tab: big icon + name, Type, Location, Size, Storage used, Created, Modified, Opened, Owner, Access (sharing summary). Details tab: every field Drive showed. Draggable by the title bar; Esc / OK / Cancel / × close it; follows light/dark.
    - Data comes from Drive's own details pane, opened **invisibly** (File information → Details, or the ⓘ "View details" button), scraped, then closed again (left open if it was already open). Unknown labels are shown as-is; if nothing can be read, a message explains how to see the details in Drive.
@@ -97,7 +99,7 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 17. **Better page-structure capture** (0.3.1) — focused sections first, 25–40 levels deep: the details pane (**label texts kept, values stripped**), the header above the list, the path from `role=main` to the first item plus the first items, open menus, the native menus Drive Explorer opened invisibly, and a detection summary. Iframes are listed (host/path, same-origin or not) and same-origin ones are walked. To capture while a menu or the pane is open, press **Ctrl+Alt+Shift+S** or use the popup's **Capture in 5 s**, then **Copy last capture**.
 
 ### Install (Load unpacked)
-1. Unzip `drive-explorer-0.3.1.zip` somewhere (you need the folder that contains `manifest.json`).
+1. Unzip `drive-explorer-0.3.2.zip` somewhere (you need the folder that contains `manifest.json`).
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** (top right).
 4. Click **Load unpacked** and select the unzipped folder (the one containing `manifest.json`).
@@ -110,8 +112,9 @@ Only `storage` (settings in `chrome.storage.sync`, the bin counter in `chrome.st
 ### Known limitations
 - **Not yet verified on the live Drive.** Drive's class names are obfuscated and change often, so the code relies on comparatively stable hooks (`role`, `aria-*`, `data-id`, `data-target`) plus size/text heuristics. A Drive update can break it; all DOM knowledge lives in `src/drive/selectors.js`.
 - Medium icons applies to Grid view only (List view is unchanged). Drive's rows are flattened into one wrapping flow, so **arrow-key navigation** still follows Drive's internal rows and may not match what you see.
-- Menu actions work by driving Drive's native menu with synthetic events. If Drive ignores them, the extension falls back to the selection toolbar button, then Drive's keyboard shortcut, then a custom fallback (e.g. building the link for Copy link). If everything fails a toast appears — use **Show Drive menu** or Shift + right-click.
-- The shortcut hints (Z, S, ".") are Drive's own single-key shortcuts; F2 (rename) is added by this extension.
+- Menu actions work by driving Drive's native menu with synthetic events. If Drive ignores them, the extension falls back to the selection toolbar button, then Drive's keyboard shortcut, then a custom fallback (e.g. building the link for Copy link). If everything fails a toast appears — use **Show Drive menu**.
+- **Shift + right-click shows Chrome's own browser menu — that is expected** (the extension leaves Shift+right-click alone so you can still reach the browser menu, e.g. Inspect). **To get Drive's own menu, use “Show Drive menu” in our menu.**
+- The shortcut hints are Drive's own shortcuts (updated in 0.3.2 to what real Drive shows: Share Ctrl+Alt+A, Move Ctrl+Alt+M, Rename Ctrl+Alt+E, Details Alt+V then D); F2 (rename) is added by this extension.
 - "Star" toggles (it runs whichever of Add to / Remove from Starred Drive offers).
 - Shared drives, Trash, search results etc. have different native menus; some items may not be available there (e.g. use "Show Drive menu" for Restore in Trash).
 - "Open in new tab" opens `https://drive.google.com/open?id=…` (folders: `/drive/folders/…`), keeping the `/u/N/` account index.
@@ -120,6 +123,7 @@ Only `storage` (settings in `chrome.storage.sync`, the bin counter in `chrome.st
 - Property values are shown exactly as Drive formats them (no byte counts like Windows). The name field is read-only (use F2 to rename). Properties for multiple selected items isn't supported.
 - If Drive itself doesn't turn dark: this extension doesn't darken Drive. Use Drive's gear → Settings → General → Appearance → Dark (some accounts may not have this setting yet).
 - Editor dark mode: in Chromium, Docs paints document **images into the canvas, so they stay inverted** (same limitation as DocsAfterDark's invert mode). The whole UI including toolbars is inverted and the page background becomes pure black. To avoid a white flash, a tiny flag (`dxe-dark-docs`, …) is cached in docs.google.com's localStorage.
+- **0.3.2 matched a second pair of dumps (page structure after Properties, and the capture with Drive's menu open)**: the pane body is a same-origin iframe (`drive.google.com/odp/embed`) with a "File details" `role=listbox` of `role=option` rows plus heading sections "Who has access" and "Security restrictions"; the layout switch is a `role=radiogroup` (List/Grid); labels carry shortcut suffixes ("共有 Ctrl+Alt+A", "名前を変更, Ctrl+Alt+E"); Drive's menu is `ul role=menu aria-label="ファイル メニュー"`. **Still unknown**: breadcrumbs inside a subfolder, the contents of Drive's submenus (Share ▸ / Organize ▸ / File information ▸), file items' inner structure, the English UI labels, and what the second "Size" row means.
 - **0.3.1 matched the details pane, the header (breadcrumb/toolbar placement) and the exclusion of the right rail / transcript sidebar to the real DOM (two dumps).** Still guessed, because the dumps didn't contain them: the pane body's content (iframe or not, label texts), file items' inner structure, the breadcrumb element type, the list/grid button labels, Drive's native menu labels and the suggestion headings. If the pane body is an iframe from an origin other than drive/docs.google.com it can't be read (we don't add permissions), and Properties shows name + type only.
 - **The 0.3.0 features were verified against the mock only**; on the live Drive these parts are heuristic: breadcrumb detection (a root button such as My Drive plus same-line buttons), Drive's layout toggle labels, suggestion headings, Gemini chip aria-labels, right-pane geometry, and file-type detection (aria-label, icon, extension).
 - Address bar: when no breadcrumbs are found it falls back to folders learned in this session, then the page title (e.g. `…/folder` under Shared with me). If the parent is unknown, ↑ goes to My Drive.
@@ -173,6 +177,7 @@ scripts/build-zip.sh       builds ../out/drive-explorer-<ver>.zip
 Tests (need Chrome + playwright-core): `node test/run-screenshots.mjs <outDir>` (scripts injected into the mocks) and `node test/run-real-extension.mjs <outDir>` (the real unpacked extension, with drive/docs.google.com answered locally by the mocks).
 
 ## Changelog
+- **0.3.2** — Fixed the "facing mirrors" address bar (folder name repeated many times right after double-clicking a folder): Drive switches the URL before `dblclick` fires, so the folder was learned as its own parent; the parent is now taken at mousedown, self/cyclic entries are refused and cleaned from the session cache, segments are de-duplicated, our own UI and `aria-hidden` / toolbar nodes are excluded from breadcrumb detection, and the address bar repaints only once the DOM has settled. Properties (already working in 0.3.1 per the user's dump) now also reads the heading sections "Who has access" / "Security restrictions", keeps repeated labels (the 2nd "Size"), ignores "Manage versions" / loading / offline texts, and fills "Location" from the breadcrumbs. Shortcut-suffixed labels (`共有 Ctrl+Alt+A`, `名前を変更, Ctrl+Alt+E`, `…(Alt+V、D キーの順)`) are cleaned before matching; the list/grid switch uses Drive's `role=radiogroup` and falls back to Alt+V, L; Details key Alt+V, D. Page-structure dumps now hide people's names in the pane (gridcell/avatar aria-labels). README: Shift+right-click shows Chrome's menu by design — use "Show Drive menu".
 - **0.3.1** — Matched to the real Drive DOM from two user dumps: details pane via `aria-label="詳細ウィンドウ"` + `data-target=hideDetails`, pane open-state measured through our hiding CSS, header name/type, iframe-aware scraping (+ all-frames helper), partial Properties instead of failure; breadcrumbs from the header above `role=main`; toolbar placed in that header (main height compensation fallback); `role=toolbar` buttons preferred; `v` view-switch fallback; side rail / transcript sidebar / hidden viewer excluded. Page structure: focused deep sections, pane label texts, iframes, native-menu snapshots, summary, Ctrl+Alt+Shift+S and delayed capture. Mock rebuilt to the real structure.
 - **0.3.0** — "Copy page structure"; aria-label + right-column heuristics for hiding the details pane; Explorer toolbar with /path address bar, Alt+↑/Backspace; status bar; Fluent file icons; hide suggestions; open files in new tab/window (service worker); Recycle Bin tile; start in My Drive (app window); Ctrl+C copies link.
 - **0.2.0** — Hide Drive's details side panel (toggle, default on); Properties dialog (context menu + Alt+Enter) fed by Drive's details pane; details info in diagnostics.

@@ -11,7 +11,7 @@
       open: 'Open', openNewTab: 'Open in new tab', download: 'Download', rename: 'Rename',
       copyLink: 'Copy link', share: 'Share', move: 'Move', addShortcut: 'Add shortcut',
       star: 'Add / remove star', makeCopy: 'Make a copy', info: 'File information', delete: 'Delete',
-      driveMenu: 'Show Drive menu', driveMenuHint: 'Shift+Right-click', properties: 'Properties',
+      driveMenu: 'Show Drive menu', driveMenuHint: '', properties: 'Properties',
       linkCopied: 'Link copied', failed: 'Drive Explorer could not run “{0}” — try “Show Drive menu”.',
       items: '{0} items',
     },
@@ -19,7 +19,7 @@
       open: '開く', openNewTab: '新しいタブで開く', download: 'ダウンロード', rename: '名前の変更',
       copyLink: 'リンクをコピー', share: '共有', move: '移動', addShortcut: 'ショートカットを追加',
       star: 'スターを付ける / 外す', makeCopy: 'コピーを作成', info: 'ファイル情報', delete: '削除',
-      driveMenu: 'ドライブのメニューを表示', driveMenuHint: 'Shift+右クリック', properties: 'プロパティ',
+      driveMenu: 'ドライブのメニューを表示', driveMenuHint: '', properties: 'プロパティ',
       linkCopied: 'リンクをコピーしました', failed: '「{0}」を実行できませんでした。「ドライブのメニューを表示」をお試しください。',
       items: '{0} 個の項目',
     },
@@ -47,8 +47,8 @@
 
   const GROUPS = [
     [['open', 'Enter'], ['openNewTab'], ['download']],
-    [['rename', 'F2'], ['copyLink'], ['share', '.']],
-    [['move', 'Z'], ['addShortcut'], ['star', 'S'], ['makeCopy']],
+    [['rename', 'F2'], ['copyLink'], ['share', 'Ctrl+Alt+A']],
+    [['move', 'Ctrl+Alt+M'], ['addShortcut'], ['star'], ['makeCopy']],
     [['info']],
     [['delete', 'Del']],
     [['driveMenu', '§']],
