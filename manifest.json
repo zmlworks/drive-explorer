@@ -1,0 +1,77 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extName__",
+  "short_name": "Drive Explorer",
+  "description": "__MSG_extDescription__",
+  "version": "0.1.0",
+  "default_locale": "en",
+  "minimum_chrome_version": "111",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "__MSG_extName__",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://drive.google.com/*",
+    "https://docs.google.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://drive.google.com/*"
+      ],
+      "js": [
+        "src/drive/early.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://drive.google.com/*"
+      ],
+      "js": [
+        "src/common/settings.js",
+        "src/drive/selectors.js",
+        "src/drive/theme.js",
+        "src/drive/tiles.js",
+        "src/drive/native-actions.js",
+        "src/drive/context-menu.js",
+        "src/drive/main.js"
+      ],
+      "css": [
+        "src/drive/drive.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://docs.google.com/document/*",
+        "https://docs.google.com/spreadsheets/*",
+        "https://docs.google.com/presentation/*"
+      ],
+      "js": [
+        "src/common/settings.js",
+        "src/docs/docs-dark.js"
+      ],
+      "css": [
+        "src/docs/docs-dark.css"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ]
+}

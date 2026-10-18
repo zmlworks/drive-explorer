@@ -1,0 +1,251 @@
+/* Drive Explorer — Medium icons view for Drive's grid.
+   Everything is scoped to html.dxe-medium and to data-dxe-* attributes that
+   tiles.js puts on Drive's own elements, so toggling off restores Drive. */
+
+html {
+  --dxe-hover: rgba(0, 0, 0, 0.045);
+  --dxe-hover-border: rgba(0, 0, 0, 0.04);
+  --dxe-sel: rgba(0, 120, 212, 0.16);
+  --dxe-sel-hover: rgba(0, 120, 212, 0.22);
+  --dxe-sel-border: rgba(0, 120, 212, 0.55);
+  --dxe-text: #1b1b1b;
+  --dxe-focus: #005fb8;
+}
+html[data-dxe-theme="dark"] {
+  --dxe-hover: rgba(255, 255, 255, 0.06);
+  --dxe-hover-border: rgba(255, 255, 255, 0.05);
+  --dxe-sel: rgba(96, 205, 255, 0.16);
+  --dxe-sel-hover: rgba(96, 205, 255, 0.22);
+  --dxe-sel-border: rgba(96, 205, 255, 0.55);
+  --dxe-text: #f3f3f3;
+  --dxe-focus: #60cdff;
+}
+
+/* ---------- container: one wrapping flow of 96px cells ---------- */
+html.dxe-medium [data-dxe-rows] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  align-content: flex-start !important;
+  gap: 2px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  grid-template-columns: none !important;
+}
+html.dxe-medium [data-dxe-row] { display: contents !important; }
+/* section headers etc. ("Folders" / "Files") keep a full line */
+html.dxe-medium [data-dxe-rows] > :not([data-dxe-row]):not([data-dxe-cell]) { flex: 0 0 100% !important; }
+
+html.dxe-medium [data-dxe-cell] {
+  flex: 0 0 96px !important;
+  width: 96px !important;
+  min-width: 96px !important;
+  max-width: 96px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: relative !important;
+  transform: none !important;
+  top: auto !important;
+  left: auto !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+/* ---------- the tile ---------- */
+html.dxe-medium [data-dxe-tile] {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 110px !important;
+  padding: 6px 4px 4px !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  border: 1px solid transparent !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  position: relative !important;
+  overflow: visible !important;
+  color: var(--dxe-text) !important;
+  transition: background-color 80ms linear, border-color 80ms linear;
+}
+html.dxe-medium [data-dxe-tile]::before,
+html.dxe-medium [data-dxe-tile]::after { display: none !important; }
+html.dxe-medium [data-dxe-tile]:hover {
+  background: var(--dxe-hover) !important;
+  border-color: var(--dxe-hover-border) !important;
+}
+html.dxe-medium [data-dxe-tile][data-dxe-sel],
+html.dxe-medium [data-dxe-tile][aria-selected="true"] {
+  background: var(--dxe-sel) !important;
+  border-color: var(--dxe-sel-border) !important;
+}
+html.dxe-medium [data-dxe-tile][data-dxe-sel]:hover,
+html.dxe-medium [data-dxe-tile][aria-selected="true"]:hover { background: var(--dxe-sel-hover) !important; }
+html.dxe-medium [data-dxe-tile]:focus-visible {
+  outline: 2px solid var(--dxe-focus) !important;
+  outline-offset: -2px !important;
+}
+
+/* every wrapper between tile and name: centred column, no Drive card chrome */
+html.dxe-medium [data-dxe-chain] {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  white-space: normal !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  overflow: visible !important;
+  flex: 0 0 auto !important;
+}
+html.dxe-medium [data-dxe-o="thumb"],
+html.dxe-medium [data-dxe-o="icon"] { order: 1 !important; }
+html.dxe-medium [data-dxe-o="name"] { order: 2 !important; }
+html.dxe-medium [data-dxe-o="other"] { display: none !important; }
+html.dxe-medium [data-dxe-o="check"] {
+  position: absolute !important; top: 2px !important; left: 2px !important;
+  order: 3 !important; margin: 0 !important; z-index: 1;
+}
+html.dxe-medium [data-dxe-o="more"],
+html.dxe-medium [data-dxe-part="more"] {
+  position: absolute !important;
+  top: 2px !important;
+  right: 2px !important;
+  margin: 0 !important;
+  order: 3 !important;
+  transform: scale(0.8);
+  transform-origin: top right;
+  opacity: 0 !important;
+  z-index: 2;
+}
+html.dxe-medium [data-dxe-tile]:hover [data-dxe-part="more"],
+html.dxe-medium [data-dxe-tile]:hover [data-dxe-o="more"],
+html.dxe-medium [data-dxe-tile]:focus-within [data-dxe-part="more"] { opacity: 1 !important; }
+
+/* ---------- name: centred, below, 2 lines ---------- */
+html.dxe-medium [data-dxe-part="name"] {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  text-align: center !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  color: var(--dxe-text) !important;
+}
+
+/* ---------- thumbnail (files) ---------- */
+html.dxe-medium [data-dxe-thumbchain] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 64px !important;
+  max-height: 64px !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  inset: auto !important;
+  aspect-ratio: auto !important;
+  border: 0 !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  flex: 0 0 auto !important;
+}
+html.dxe-medium [data-dxe-part="thumb"] {
+  width: auto !important;
+  height: auto !important;
+  max-width: 64px !important;
+  max-height: 64px !important;
+  object-fit: contain !important;
+  position: static !important;
+  transform: none !important;
+  margin: 0 !important;
+  border-radius: 2px !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06) !important;
+}
+html.dxe-medium div[data-dxe-part="thumb"] {
+  width: 64px !important;
+  height: 64px !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+/* small type icon is redundant when a thumbnail is shown */
+html.dxe-medium [data-dxe-hasthumb] [data-dxe-part="icon"],
+html.dxe-medium [data-dxe-hasthumb] [data-dxe-o="icon"] { display: none !important; }
+
+/* ---------- big icon (folders / files without thumbnail) ---------- */
+html.dxe-medium [data-dxe-tile]:not([data-dxe-hasthumb]) [data-dxe-iconwrap] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+html.dxe-medium [data-dxe-tile]:not([data-dxe-hasthumb]) [data-dxe-part="icon"] {
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 52px !important;
+  margin: 6px auto 0 !important;
+  flex: 0 0 auto !important;
+  object-fit: contain !important;
+}
+
+html.dxe-medium [data-dxe-tile]:not([data-dxe-hasthumb]) [data-dxe-part="icon"] svg,
+html.dxe-medium [data-dxe-tile]:not([data-dxe-hasthumb]) [data-dxe-part="icon"] img {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ---------- native Drive menu while we drive it offscreen ---------- */
+html.dxe-native-hidden [role="menu"]:not([data-dxe-ui]) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: none !important;
+  animation: none !important;
+}

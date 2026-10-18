@@ -1,0 +1,19 @@
+{
+  "extName": { "message": "Drive Explorer (Win11 style)" },
+  "extDescription": { "message": "Makes Google Drive feel like Windows 11 File Explorer: medium icons view, Win11-style context menu, and dark mode for Docs/Sheets/Slides." },
+  "secDrive": { "message": "Google Drive" },
+  "optMediumIcons": { "message": "Medium icons view (grid view)" },
+  "optMediumIconsHint": { "message": "Restyles Drive's grid view: compact tiles, names below icons." },
+  "optContextMenu": { "message": "Windows 11 context menu" },
+  "optContextMenuHint": { "message": "Shift + right-click shows Drive's own menu." },
+  "secDocs": { "message": "Dark mode for editors (docs.google.com)" },
+  "optDarkDocs": { "message": "Docs" },
+  "optDarkSheets": { "message": "Sheets" },
+  "optDarkSlides": { "message": "Slides" },
+  "secAdvanced": { "message": "Advanced" },
+  "optDebug": { "message": "Debug: log selector matches to the console" },
+  "btnDiag": { "message": "Copy diagnostics from current Drive tab" },
+  "diagCopied": { "message": "Diagnostics copied to clipboard." },
+  "diagNoTab": { "message": "Open a drive.google.com tab first (and reload it after installing)." },
+  "footer": { "message": "Changes apply immediately. No network requests, no account access." }
+}

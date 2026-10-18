@@ -1,0 +1,222 @@
+<!doctype html>
+<!-- Local approximation of Google Drive's 2026 grid view DOM (names ABOVE
+     thumbnails, obfuscated classes, role/aria/data-id hooks). Test-only.
+     Query: ?hl=ja|en  &theme=dark|light  &view=grid|list -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My Drive - Google Drive (mock)</title>
+<style>
+  body { margin: 0; font: 14px/1.4 "Google Sans", Roboto, Arial, "Noto Sans JP", sans-serif; background: #f8fafd; color: #1f1f1f; }
+  body.dark { background: #1b1b1b; color: #e3e3e3; }
+  .a1 { display: flex; height: 100vh; }
+  .nav { width: 220px; padding: 16px; box-sizing: border-box; }
+  .nav .b { background: #fff; border-radius: 16px; padding: 14px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.3); width: 90px; }
+  body.dark .nav .b { background: #37393b; }
+  .nav p { margin: 18px 0; padding-left: 12px; }
+  .mn { flex: 1; background: #fff; border-radius: 16px; margin: 0 16px 16px 0; padding: 12px 20px; overflow: auto; }
+  body.dark .mn { background: #131314; }
+  .hdr { font-size: 22px; margin: 6px 0 12px; }
+  .bar { height: 40px; display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .bar [role=button] { padding: 6px 10px; border-radius: 16px; background: #e9eef6; cursor: pointer; font-size: 12px; }
+  body.dark .bar [role=button] { background: #2a2b2e; }
+  .bar[hidden] { display: none; }
+  .sec { font-size: 14px; font-weight: 500; margin: 16px 0 8px; }
+  .Wq1 { display: flex; gap: 16px; margin-bottom: 16px; }
+  .gC { width: 220px; flex: 0 0 220px; }
+  .Kz { border-radius: 12px; background: #f0f4f9; cursor: default; overflow: hidden; }
+  body.dark .Kz { background: #282a2c; }
+  [aria-selected=true] .Kz { background: #c2e7ff; }
+  body.dark [aria-selected=true] .Kz { background: #004a77; }
+  .Hd { display: flex; align-items: center; height: 48px; padding: 0 4px 0 16px; gap: 12px; }
+  .Ic { width: 20px; height: 20px; flex: 0 0 20px; display: flex; }
+  .Ic img, .Ic svg { width: 20px; height: 20px; }
+  .Nm { flex: 1; min-width: 0; }
+  .Nm div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+  .Mr { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .Mr:hover { background: rgba(0,0,0,.08); }
+  .Th { margin: 0 8px 8px; height: 170px; border-radius: 8px; background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+  body.dark .Th { background: #1e1f20; }
+  .Th img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .Rs { font-size: 12px; color: #666; padding: 0 16px 10px; }
+  /* list view */
+  .lr { display: flex; height: 48px; align-items: center; border-bottom: 1px solid #ddd; }
+  .lr [role=gridcell] { padding: 0 12px; }
+  .lr[aria-selected=true] { background: #c2e7ff; }
+  /* native menu */
+  .Nmenu { position: fixed; z-index: 1000; background: #fff; color: #1f1f1f; border-radius: 4px; box-shadow: 0 2px 6px 2px rgba(0,0,0,.15); padding: 8px 0; min-width: 260px; }
+  body.dark .Nmenu { background: #2d2f31; color: #e3e3e3; }
+  .Nmenu [role=menuitem] { display: flex; align-items: center; height: 32px; padding: 0 16px; gap: 12px; }
+  .Nmenu [role=menuitem]:hover, .Nmenu [role=menuitem].hl { background: rgba(0,0,0,.08); }
+  .Nmenu .k { margin-left: auto; color: #777; font-size: 12px; }
+  .Nmenu hr { border: 0; border-top: 1px solid #ddd; margin: 8px 0; }
+  #log { position: fixed; right: 8px; bottom: 8px; font: 11px monospace; background: rgba(0,0,0,.75); color: #0f0; padding: 6px; max-width: 420px; white-space: pre-wrap; z-index: 5; }
+</style>
+</head>
+<body>
+<div class="a1">
+  <div class="nav"><div class="b" id="newBtn">+ New</div><p id="n1">My Drive</p><p id="n2">Shared with me</p><p id="n3">Starred</p><p id="n4">Trash</p></div>
+  <div class="mn" role="main">
+    <div class="hdr" id="title">My Drive</div>
+    <div class="bar" id="selbar" hidden></div>
+    <div role="grid" id="grid" aria-multiselectable="true"></div>
+  </div>
+</div>
+<div id="log"></div>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const ja = q.get('hl') === 'ja';
+  const view = q.get('view') || 'grid';
+  document.documentElement.lang = ja ? 'ja' : 'en';
+  if (q.get('theme') === 'dark') document.body.classList.add('dark');
+  if (q.get('nolog')) document.getElementById('log').style.display = 'none';
+  const T = ja ? { my: 'マイドライブ', sw: '共有アイテム', st: 'スター付き', tr: 'ゴミ箱', nw: '+ 新規', folders: 'フォルダ', files: 'ファイル', more: 'その他の操作', folder: 'フォルダ', reason: '今日開きました' }
+               : { my: 'My Drive', sw: 'Shared with me', st: 'Starred', tr: 'Trash', nw: '+ New', folders: 'Folders', files: 'Files', more: 'More actions', folder: 'Folder', reason: 'You opened today' };
+  title.textContent = T.my; n1.textContent = T.my; n2.textContent = T.sw; n3.textContent = T.st; n4.textContent = T.tr; newBtn.textContent = T.nw;
+
+  const folderSvg = (c) => `<svg viewBox="0 0 24 24" width="20" height="20" focusable="false"><path fill="${c}" d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
+  const typeIcon = (color, letter) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="2" fill="${color}"/><text x="8" y="12" font-size="10" text-anchor="middle" fill="#fff" font-family="Arial" font-weight="bold">${letter}</text></svg>`);
+  const photo = (h1, h2, label) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${h1}"/><stop offset="1" stop-color="${h2}"/></linearGradient></defs><rect width="320" height="220" fill="url(#g)"/><circle cx="240" cy="60" r="28" fill="#fff8"/><path d="M0 220 L90 110 L160 180 L220 130 L320 220Z" fill="#0004"/><text x="16" y="34" font-size="22" fill="#fff" font-family="Arial">${label}</text></svg>`);
+  const page = (accent) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 280"><rect width="220" height="280" fill="#fff"/><rect x="20" y="24" width="120" height="12" fill="${accent}"/>${[0,1,2,3,4,5,6,7,8,9].map(i=>`<rect x="20" y="${56+i*20}" width="${160-(i%3)*30}" height="7" fill="#bbb"/>`).join('')}</svg>`);
+  const sheet = () => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 160"><rect width="220" height="160" fill="#fff"/>${[...Array(8)].map((_,i)=>`<line x1="0" y1="${i*20}" x2="220" y2="${i*20}" stroke="#ccc"/>`).join('')}${[...Array(6)].map((_,i)=>`<line x1="${i*44}" y1="0" x2="${i*44}" y2="160" stroke="#ccc"/>`).join('')}<rect x="0" y="0" width="220" height="20" fill="#0f9d5822"/></svg>`);
+  const slide = () => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#fbbc04"/><rect x="30" y="60" width="200" height="22" fill="#fff"/><rect x="30" y="95" width="140" height="12" fill="#fff9"/></svg>`);
+
+  const folders = ja
+    ? ['プロジェクト資料', '2026年 経理', '写真', 'Shared with team', '請求書・見積書（取引先別）アーカイブ']
+    : ['Project files', 'Finance 2026', 'Photos', '共有チーム', 'Invoices and quotes (by client) archive'];
+  const files = [
+    { n: ja ? '議事録 2026-10-15.docx' : 'Meeting notes 2026-10-15', t: 'doc' },
+    { n: 'IMG_20261012_143355.jpg', t: 'img', c: ['#ff7a59', '#7b2ff7'] },
+    { n: ja ? '売上集計（第3四半期）' : 'Q3 sales summary', t: 'sheet' },
+    { n: ja ? '提案資料_最終版_v12_本当に最終.pptx' : 'Pitch deck final v12 really final.pptx', t: 'slide' },
+    { n: 'beach.png', t: 'img', c: ['#00c6ff', '#0072ff'] },
+    { n: ja ? 'とても長いファイル名の例です。二行に折り返して省略されるかを確認するためのファイル.pdf' : 'A very long file name that should wrap onto two lines and then get truncated with an ellipsis.pdf', t: 'pdf' },
+    { n: 'mountains.jpg', t: 'img', c: ['#56ab2f', '#a8e063'] },
+    { n: 'README.txt', t: 'txt' },
+    { n: 'sunset.jpg', t: 'img', c: ['#f12711', '#f5af19'] },
+    { n: 'budget.xlsx', t: 'sheet' },
+  ];
+  const ICON = { doc: ['#4285f4', 'W'], sheet: ['#0f9d58', 'S'], slide: ['#f4b400', 'P'], img: ['#d93025', '▲'], pdf: ['#ea4335', 'P'], txt: ['#5f6368', 'T'] };
+  const TYPE = { doc: 'Google Docs', sheet: 'Google Sheets', slide: 'Google Slides', img: 'Image', pdf: 'PDF', txt: 'Text' };
+  const thumbFor = (f) => f.t === 'img' ? photo(f.c[0], f.c[1], '') : f.t === 'doc' ? page('#4285f4') : f.t === 'pdf' ? page('#ea4335') : f.t === 'sheet' ? sheet() : f.t === 'slide' ? slide() : page('#999');
+
+  let idc = 0;
+  const rid = () => '1AbC' + (++idc).toString(36).padStart(4, 'x') + 'ZyXwVuTsRqPoNmLkJ';
+  const grid = document.getElementById('grid');
+  const mkCell = (name, isFolder, f) => {
+    const cell = document.createElement('div');
+    cell.className = view === 'grid' ? 'gC' : 'lr';
+    cell.setAttribute('role', view === 'grid' ? 'gridcell' : 'row');
+    cell.dataset.id = rid(); cell.dataset.target = 'doc';
+    cell.setAttribute('aria-selected', 'false'); cell.tabIndex = -1; cell.draggable = true;
+    cell.setAttribute('aria-label', name + ' ' + (isFolder ? (ja ? 'フォルダ' : 'Folder') : TYPE[f.t]));
+    cell.setAttribute('jsaction', 'click:cOuCgd; dblclick:FNFY6c; contextmenu:mg9Pef');
+    const icon = isFolder ? `<div class="Ic" role="img" aria-label="${T.folder}">${folderSvg(document.body.classList.contains('dark') ? '#c4c7c5' : '#5f6368')}</div>`
+                          : `<div class="Ic"><img src="${typeIcon(...ICON[f.t])}" alt="${TYPE[f.t]}" width="16" height="16"></div>`;
+    if (view === 'list') {
+      cell.innerHTML = `<div role="gridcell" class="c1">${icon}</div><div role="gridcell" class="c2"><div class="Nm"><div data-tooltip="${name}">${name}</div></div></div><div role="gridcell">me</div><div role="gridcell">Oct 12</div>`;
+      return cell;
+    }
+    cell.innerHTML = `<div class="Kz"><div class="Hd">${icon}<div class="Nm"><div data-tooltip="${name}">${name}</div></div>` +
+      `<div class="Mr" role="button" aria-label="${T.more}" aria-haspopup="true" tabindex="0">⋮</div></div>` +
+      (isFolder ? '' : `<div class="Th"><img src="${thumbFor(f)}" alt="" loading="eager"></div><div class="Rs">${T.reason}</div>`) + '</div>';
+    return cell;
+  };
+  const section = (label, cells, perRow) => {
+    const h = document.createElement('div'); h.className = 'sec'; h.setAttribute('role', 'presentation'); h.textContent = label; grid.appendChild(h);
+    for (let i = 0; i < cells.length; i += perRow) {
+      const row = document.createElement('div'); row.setAttribute('role', 'row'); row.className = 'Wq1';
+      cells.slice(i, i + perRow).forEach((c) => row.appendChild(c));
+      grid.appendChild(row);
+    }
+  };
+  if (view === 'grid') {
+    section(T.folders, folders.map((n) => mkCell(n, true)), 4);
+    section(T.files, files.map((f) => mkCell(f.n, false, f)), 4);
+  } else {
+    [...folders.map((n) => mkCell(n, true)), ...files.map((f) => mkCell(f.n, false, f))].forEach((c) => grid.appendChild(c));
+  }
+
+  /* ---- behaviour (Drive-like) ---- */
+  const logEl = document.getElementById('log');
+  window.__actions = [];
+  const log = (s) => { window.__actions.push(s); logEl.textContent = window.__actions.slice(-6).join('\n'); };
+  const items = () => [...document.querySelectorAll('[data-id]')];
+  const nameOf = (c) => c.getAttribute('aria-label');
+  const selbar = document.getElementById('selbar');
+  const BAR = ja ? ['共有', 'ダウンロード', '移動', 'ゴミ箱に移動', 'リンクをコピー'] : ['Share', 'Download', 'Move', 'Move to trash', 'Copy link'];
+  selbar.innerHTML = BAR.map((b) => `<div role="button" aria-label="${b}" tabindex="0">${b}</div>`).join('');
+  selbar.addEventListener('click', (e) => { const b = e.target.closest('[role=button]'); if (b) log('TOOLBAR ' + b.getAttribute('aria-label')); });
+  const updateBar = () => { selbar.hidden = !items().some((c) => c.getAttribute('aria-selected') === 'true'); };
+  const select = (c, additive) => {
+    if (!additive) items().forEach((x) => x.setAttribute('aria-selected', 'false'));
+    c.setAttribute('aria-selected', additive && c.getAttribute('aria-selected') === 'true' ? 'false' : 'true');
+    c.focus(); updateBar();
+  };
+  document.addEventListener('mousedown', (e) => {
+    const c = e.target.closest('[data-id]');
+    if (e.target.closest('.Nmenu,[role=button]')) return;
+    if (!c) { if (!e.target.closest('#selbar')) { items().forEach((x) => x.setAttribute('aria-selected', 'false')); updateBar(); } return; }
+    if (e.button === 2 && c.getAttribute('aria-selected') === 'true') return;
+    select(c, e.ctrlKey || e.metaKey);
+  });
+  document.addEventListener('dblclick', (e) => { const c = e.target.closest('[data-id]'); if (c) log('OPEN ' + nameOf(c)); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') return closeMenus();
+    const c = document.activeElement && document.activeElement.closest && document.activeElement.closest('[data-id]');
+    if (c && !e.target.closest('.Nmenu')) log('KEY ' + e.key + (e.shiftKey ? '+shift' : '') + ' on ' + nameOf(c));
+  });
+
+  const M = ja ? {
+    top: [['open', 'アプリで開く', 1], '-', ['dl', 'ダウンロード'], ['rn', '名前を変更', 0, 'Ctrl+Alt+E'], ['cp', 'コピーを作成', 0, 'Ctrl+C Ctrl+V'], '-',
+      ['share', '共有', 1], ['org', '整理', 1], ['info', 'ファイル情報', 1], ['offline', 'オフラインで使用可能にする'], '-', ['trash', 'ゴミ箱に移動', 0, 'Delete']],
+    share: [['sh', '共有', 0, 'Ctrl+Alt+A'], ['link', 'リンクをコピー']],
+    org: [['mv', '移動', 0, 'Ctrl+Alt+M'], ['sc', 'ショートカットを追加'], ['star', 'スターを付ける', 0, 'Ctrl+Alt+S']],
+    info: [['det', '詳細', 0, 'Ctrl+Alt+D'], ['act', 'アクティビティ']],
+    open: [['prev', 'プレビュー'], ['docs', 'Google ドキュメント']],
+  } : {
+    top: [['open', 'Open with', 1], '-', ['dl', 'Download'], ['rn', 'Rename', 0, 'Ctrl+Alt+E'], ['cp', 'Make a copy', 0, 'Ctrl+C Ctrl+V'], '-',
+      ['share', 'Share', 1], ['org', 'Organize', 1], ['info', 'File information', 1], ['offline', 'Make available offline'], '-', ['trash', 'Move to trash', 0, 'Delete']],
+    share: [['sh', 'Share', 0, 'Ctrl+Alt+A'], ['link', 'Copy link']],
+    org: [['mv', 'Move', 0, 'Ctrl+Alt+M'], ['sc', 'Add shortcut'], ['star', 'Add to starred', 0, 'Ctrl+Alt+S']],
+    info: [['det', 'Details', 0, 'Ctrl+Alt+D'], ['act', 'Activity']],
+    open: [['prev', 'Preview'], ['docs', 'Google Docs']],
+  };
+  let menus = [];
+  function closeMenus() { menus.forEach((m) => m.remove()); menus = []; }
+  function buildMenu(list, x, y, level) {
+    const m = document.createElement('div'); m.className = 'Nmenu'; m.setAttribute('role', 'menu'); m.tabIndex = -1;
+    m.style.left = x + 'px'; m.style.top = y + 'px';
+    for (const e of list) {
+      if (e === '-') { m.appendChild(document.createElement('hr')); continue; }
+      const [id, label, sub, kb] = e;
+      const it = document.createElement('div'); it.setAttribute('role', 'menuitem'); it.dataset.mid = id;
+      if (sub) it.setAttribute('aria-haspopup', 'true');
+      it.innerHTML = `<span class="ic">•</span><span class="lb">${label}</span>${kb ? `<span class="k">${kb}</span>` : sub ? '<span class="k">▸</span>' : ''}`;
+      it.addEventListener('mouseenter', () => {
+        m.querySelectorAll('.hl').forEach((h) => h.classList.remove('hl')); it.classList.add('hl');
+        menus.slice(level + 1).forEach((s) => s.remove()); menus = menus.slice(0, level + 1);
+        if (sub) { const r = it.getBoundingClientRect(); menus.push(buildMenu(M[id], r.right, r.top, level + 1)); }
+      });
+      it.addEventListener('click', () => { if (sub) return; log('MENU ' + label); closeMenus(); });
+      m.appendChild(it);
+    }
+    document.body.appendChild(m);
+    return m;
+  }
+  document.addEventListener('contextmenu', (e) => {
+    const c = e.target.closest('[data-id]');
+    if (!c) return;
+    e.preventDefault();
+    if (c.getAttribute('aria-selected') !== 'true') select(c, false);
+    closeMenus();
+    menus.push(buildMenu(M.top, e.clientX, e.clientY, 0));
+    log('NATIVE-MENU-OPENED');
+  });
+  document.addEventListener('click', (e) => { const b = e.target.closest('.Mr'); if (b) { const r = b.getBoundingClientRect(); closeMenus(); menus.push(buildMenu(M.top, r.left, r.bottom, 0)); } });
+  document.addEventListener('mousedown', (e) => { if (!e.target.closest('.Nmenu')) closeMenus(); }, true);
+})();
+</script>
+</body>
+</html>

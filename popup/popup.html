@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="light dark">
+  <link rel="stylesheet" href="popup.css">
+  <title>Drive Explorer</title>
+</head>
+<body>
+  <header>
+    <img src="../icons/icon32.png" width="20" height="20" alt="">
+    <span data-i18n="extName"></span>
+    <small id="ver"></small>
+  </header>
+
+  <section>
+    <h2 data-i18n="secDrive"></h2>
+    <label class="row"><span><span data-i18n="optMediumIcons"></span><em data-i18n="optMediumIconsHint"></em></span>
+      <input type="checkbox" class="sw" data-key="mediumIcons"></label>
+    <label class="row"><span><span data-i18n="optContextMenu"></span><em data-i18n="optContextMenuHint"></em></span>
+      <input type="checkbox" class="sw" data-key="contextMenu"></label>
+  </section>
+
+  <section>
+    <h2 data-i18n="secDocs"></h2>
+    <label class="row"><span data-i18n="optDarkDocs"></span><input type="checkbox" class="sw" data-key="darkDocs"></label>
+    <label class="row"><span data-i18n="optDarkSheets"></span><input type="checkbox" class="sw" data-key="darkSheets"></label>
+    <label class="row"><span data-i18n="optDarkSlides"></span><input type="checkbox" class="sw" data-key="darkSlides"></label>
+  </section>
+
+  <section>
+    <h2 data-i18n="secAdvanced"></h2>
+    <label class="row"><span data-i18n="optDebug"></span><input type="checkbox" class="sw" data-key="debug"></label>
+    <button id="diag" type="button" data-i18n="btnDiag"></button>
+    <p id="status" role="status"></p>
+  </section>
+
+  <footer data-i18n="footer"></footer>
+  <script src="../src/common/settings.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- Tiny stand-in for a Docs editor: toolbar, canvas-rendered page, an image,
+     a colour palette. Test-only. -->
+<html lang="en"><head><meta charset="utf-8"><title>Doc (mock)</title>
+<style>
+  body { margin: 0; font: 14px Arial, sans-serif; background: #f9fbfd; color: #1f1f1f; }
+  .docs-titlebar { height: 56px; display: flex; align-items: center; padding: 0 16px; gap: 12px; font-size: 18px; }
+  .docs-titlebar .logo { width: 28px; height: 36px; background: #4285f4; border-radius: 3px; }
+  #docs-toolbar { margin: 0 12px; height: 40px; border-radius: 20px; background: #edf2fa; display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+  .kix-appview-editor { display: flex; justify-content: center; padding: 16px; gap: 24px; }
+  canvas { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .pal { display: grid; grid-template-columns: repeat(8, 18px); gap: 4px; background: #fff; padding: 8px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,.2); height: max-content; }
+  .docs-material-colorpalette-colorswatch-color { width: 18px; height: 18px; border-radius: 50%; }
+  .side img { width: 160px; display: block; margin-bottom: 6px; border-radius: 4px; }
+</style></head>
+<body>
+<div class="docs-titlebar"><div class="logo"></div>Untitled document <span style="margin-left:auto;background:#c2e7ff;padding:8px 18px;border-radius:18px">Share</span></div>
+<div id="docs-toolbar"><b>B</b><i>I</i><u>U</u><span style="color:#d93025">A</span><span>100%</span><span>Normal text</span><span>Arial</span></div>
+<div class="kix-appview-editor">
+  <canvas id="c" width="560" height="420"></canvas>
+  <div class="side">
+    <img alt="photo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 110'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff7a59'/%3E%3Cstop offset='1' stop-color='%237b2ff7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='160' height='110' fill='url(%23g)'/%3E%3Ccircle cx='120' cy='30' r='14' fill='%23fff9'/%3E%3C/svg%3E">
+    <small>&lt;img&gt; (re-inverted → true colours)</small>
+    <div class="pal" style="margin-top:12px">
+      <script>for (const c of ['#000','#434343','#666','#999','#ccc','#efefef','#f3f3f3','#fff','#980000','#f00','#f90','#ff0','#0f0','#0ff','#4a86e8','#00f','#90f','#f0f','#e6b8af','#f4cccc','#fce5cd','#fff2cc','#d9ead3','#d0e0e3'])
+        document.write(`<div class="docs-material-colorpalette-colorswatch-color" style="background:${c}"></div>`);</script>
+    </div>
+    <small>colour palette (re-inverted)</small>
+  </div>
+</div>
+<script>
+  const x = document.getElementById('c').getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, 560, 420);
+  x.fillStyle = '#1f1f1f'; x.font = 'bold 26px Arial'; x.fillText('Quarterly report', 48, 70);
+  x.font = '15px Arial';
+  ['Text in Docs is painted on a <canvas>, so the whole page is', 'inverted with invert(1) hue-rotate(180deg).', '', 'Coloured text keeps its hue:'].forEach((l, i) => x.fillText(l, 48, 112 + i * 24));
+  x.fillStyle = '#d93025'; x.fillText('red text', 48, 208); x.fillStyle = '#188038'; x.fillText('green text', 128, 208); x.fillStyle = '#1a73e8'; x.fillText('blue link', 228, 208);
+  x.fillStyle = '#fbbc04'; x.fillRect(48, 236, 180, 22); x.fillStyle = '#1f1f1f'; x.fillText('highlighted', 56, 252);
+  const g = x.createLinearGradient(48, 280, 248, 390); g.addColorStop(0, '#ff7a59'); g.addColorStop(1, '#7b2ff7');
+  x.fillStyle = g; x.fillRect(48, 280, 200, 110); x.fillStyle = '#5f6368'; x.font = '12px Arial'; x.fillText('image drawn into canvas (stays inverted)', 262, 340);
+</script>
+</body></html>

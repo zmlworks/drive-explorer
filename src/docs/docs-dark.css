@@ -1,0 +1,40 @@
+/* Drive Explorer — dark mode for docs.google.com editors (filter approach,
+   same idea as DocsAfterDark's "invert" mode). Active only with html.dxe-docs-dark. */
+html.dxe-docs-dark {
+  filter: invert(1) hue-rotate(180deg) !important;
+  background: #fff !important; /* becomes black after inversion */
+  color-scheme: light !important; /* keep native controls light → dark after inversion */
+}
+
+/* Re-invert real imagery so it shows in its true colours.
+   NOTE (Chromium): Docs paints inline images INTO the page <canvas>, so those
+   stay inverted — a known limitation shared by every filter-based dark mode.   */
+html.dxe-docs-dark img:not(.docs-icon-img):not([src*="/icons/"]):not([src$=".svg"]),
+html.dxe-docs-dark video,
+html.dxe-docs-dark svg image,
+/* colour pickers / palettes / swatches */
+html.dxe-docs-dark .docs-material-colorpalette-colorswatch-color,
+html.dxe-docs-dark .docs-material-colorpalette-cell,
+html.dxe-docs-dark .goog-palette-colorswatch,
+html.dxe-docs-dark .docs-preview-palette-item,
+html.dxe-docs-dark .docs-color-picker-swatch,
+html.dxe-docs-dark [class*="colorswatch"],
+html.dxe-docs-dark [class*="color-swatch"],
+html.dxe-docs-dark .docs-material-hsv-color-picker,
+html.dxe-docs-dark .docs-material-hsv-color-picker-hue-slider,
+/* Sheets: embedded charts / images over the grid */
+html.dxe-docs-dark .waffle-embedded-object-overlay img,
+/* avatars / profile pictures */
+html.dxe-docs-dark .docs-presence-plus-collab-widget-image,
+html.dxe-docs-dark [aria-label*="Google Account"] img {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+/* never double-invert nested re-inverted things */
+html.dxe-docs-dark [class*="colorswatch"] [class*="colorswatch"],
+html.dxe-docs-dark .waffle-embedded-object-overlay img img {
+  filter: none !important;
+}
+
+/* Slides: canvas around the slide is a light grey; keep it neutral. */
+html.dxe-docs-dark[data-dxe-app="slides"] .punch-viewer-container,
+html.dxe-docs-dark[data-dxe-app="slides"] .punch-present-iframe { filter: invert(1) hue-rotate(180deg) !important; }
