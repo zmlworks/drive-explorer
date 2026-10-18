@@ -4,11 +4,20 @@
   const DXE = (globalThis.DXE = globalThis.DXE || {});
   if (DXE.settingsReady) return;
 
-  DXE.VERSION = '0.2.0';
+  DXE.VERSION = '0.3.0';
   DXE.DEFAULTS = Object.freeze({
     mediumIcons: true,
     contextMenu: true,
     suppressDetails: true,
+    fluentIcons: true,
+    explorerToolbar: true,
+    statusBar: true,
+    hideSuggestions: true,
+    recycleBin: true,
+    ctrlCCopiesLink: true,
+    openFilesIn: 'tab', // 'tab' | 'window' | 'drive'
+    rootRedirectApp: true,
+    rootRedirectTabs: false,
     darkDocs: false,
     darkSheets: false,
     darkSlides: false,

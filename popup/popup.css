@@ -31,3 +31,7 @@ button { width: 100%; margin: 6px 0 4px; padding: 6px 10px; border-radius: 4px; 
 button:hover { filter: brightness(0.97); }
 #status { min-height: 1em; margin: 2px 0 6px; font-size: 12px; color: var(--sub); }
 footer { font-size: 11px; color: var(--sub); text-align: center; margin-top: 4px; }
+select { flex: 0 0 auto; max-width: 130px; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--fg); font: inherit; }
+select:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
+body { max-height: 600px; overflow-y: auto; }

@@ -242,6 +242,24 @@ html.dxe-medium [data-dxe-tile]:not([data-dxe-hasthumb]) [data-dxe-part="icon"] 
   height: 100% !important;
 }
 
+/* ---------- Win11-style icons (fluent-icons.js) ---------- */
+[data-dxe-ficon] { display: none; }
+html.dxe-medium.dxe-fluent [data-dxe-tile]:not([data-dxe-hasthumb]) [data-dxe-ficon] {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 56px !important;
+  height: 56px !important;
+  margin: 4px auto 0 !important;
+  flex: 0 0 auto !important;
+  order: 1;
+}
+html.dxe-medium.dxe-fluent [data-dxe-tile]:not([data-dxe-hasthumb]) [data-dxe-ficon] svg { width: 52px; height: 52px; }
+html.dxe-medium.dxe-fluent [data-dxe-tile]:not([data-dxe-hasthumb]) [data-dxe-part="icon"] { display: none !important; }
+
+/* ---------- hidden suggestions (suggestions.js) ---------- */
+html.dxe-hide-sugg [data-dxe-sugg] { display: none !important; }
+
 /* ---------- native Drive menu while we drive it offscreen ---------- */
 html.dxe-native-hidden [role="menu"]:not([data-dxe-ui]) {
   opacity: 0 !important;

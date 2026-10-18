@@ -141,7 +141,20 @@
       h.textContent = t('items', count);
       m.appendChild(h);
     }
-    GROUPS.forEach((g, gi) => {
+    if (c.custom) {
+      // generic menu: c.custom = [[{ id, label, hint, svg, run }...], ...]
+      c.custom.forEach((g, gi) => {
+        if (gi) { const s = document.createElement('div'); s.className = 'sep'; s.setAttribute('role', 'separator'); m.appendChild(s); }
+        for (const e of g) {
+          const it = document.createElement('div');
+          it.className = 'item'; it.setAttribute('role', 'menuitem'); it.dataset.action = e.id;
+          it.innerHTML = `<span class="ic">${e.svg ? `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${e.svg}</svg>` : icon(e.id)}</span><span class="lb"></span><span class="kb"></span>`;
+          it.querySelector('.lb').textContent = e.label;
+          it.querySelector('.kb').textContent = e.hint || '';
+          m.appendChild(it);
+        }
+      });
+    } else GROUPS.forEach((g, gi) => {
       if (gi) { const s = document.createElement('div'); s.className = 'sep'; s.setAttribute('role', 'separator'); m.appendChild(s); }
       for (const [id, kb] of g) {
         const spec = SEL.ACTIONS[id] || {};
@@ -193,14 +206,14 @@
     menuEl.style.top = '0px';
     root.appendChild(menuEl);
     let { x, y } = c;
-    if (!x && !y) { const r = c.item.getBoundingClientRect(); x = r.left + 16; y = r.top + Math.min(r.height, 60); }
+    if (!x && !y && c.item) { const r = c.item.getBoundingClientRect(); x = r.left + 16; y = r.top + Math.min(r.height, 60); }
     place(menuEl, x, y);
     requestAnimationFrame(() => menuEl && menuEl.classList.add('show'));
     focusIdx = -1;
     if (c.keyboard) setFocus(0);
     shownAt = performance.now();
     addGlobal();
-    DXE.log('menu shown for', SEL.itemId(c.item).slice(0, 8) + '…', c);
+    DXE.log('menu shown', c.custom ? '(custom)' : 'for ' + SEL.itemId(c.item).slice(0, 8) + '…', c);
   }
 
   function hide() {
@@ -214,6 +227,13 @@
     const c = ctx;
     hide();
     if (!c) return;
+    if (c.custom) {
+      const e = c.custom.flat().find((x) => x.id === action);
+      if (e && e.run) e.run();
+      return;
+    }
+    // Explorer-style open for files (new tab / window) — see open-files.js
+    if (action === 'open' && DXE.openFiles && DXE.openFiles.tryOpen(c.item)) return;
     const ok = await DXE.native.perform(action, c);
     if (!ok) toast(t('failed', t(action)));
   }

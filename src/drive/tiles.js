@@ -8,7 +8,7 @@
   const SEL = DXE.SEL;
 
   const ATTRS = ['data-dxe-tile', 'data-dxe-hasthumb', 'data-dxe-sel', 'data-dxe-chain', 'data-dxe-o',
-    'data-dxe-part', 'data-dxe-iconwrap', 'data-dxe-thumbchain', 'data-dxe-cell', 'data-dxe-row', 'data-dxe-rows'];
+    'data-dxe-part', 'data-dxe-iconwrap', 'data-dxe-thumbchain', 'data-dxe-cell', 'data-dxe-row', 'data-dxe-rows', 'data-dxe-section'];
 
   const stats = (DXE.tileStats = {
     scans: 0, items: 0, tiles: 0, listRows: 0, noName: 0, withThumb: 0,
@@ -56,7 +56,8 @@
     // Order children of tile + chain elements: thumb/icon (1), name (2), rest (3).
     for (const P of [tile, ...chain]) {
       for (const c of P.children) {
-        if (c.contains(a.name)) c.setAttribute('data-dxe-o', 'name');
+        if (c.hasAttribute('data-dxe-ficon') || (c.querySelector('[data-dxe-ficon]') && !c.contains(a.name))) c.setAttribute('data-dxe-o', 'icon');
+        else if (c.contains(a.name)) c.setAttribute('data-dxe-o', 'name');
         else if (a.thumb && c.contains(a.thumb)) c.setAttribute('data-dxe-o', 'thumb');
         else if (a.more && c.contains(a.more)) c.setAttribute('data-dxe-o', 'more');
         else if (a.icon && c.contains(a.icon)) c.setAttribute('data-dxe-o', 'icon');
@@ -92,6 +93,36 @@
     if (c.rowsParent && !c.rowsParent.hasAttribute('data-dxe-rows')) c.rowsParent.setAttribute('data-dxe-rows', '');
   }
 
+  /* Win11-style icon for tiles without a thumbnail (folders, files w/o preview). */
+  function fluentIcon(tile, a) {
+    const want = DXE.settings.fluentIcons && a && a.name && !a.thumb && DXE.ICONS;
+    let ic = tile.querySelector('[data-dxe-ficon]');
+    if (!want) { if (ic) ic.remove(); return; }
+    const k = SEL.fileKind(tile, SEL.norm(a.name.textContent)).kind;
+    if (ic && ic.dataset.kind === k && ic.isConnected) return;
+    if (!ic) {
+      ic = document.createElement('span');
+      ic.setAttribute('data-dxe-ficon', '');
+      ic.setAttribute('aria-hidden', 'true');
+    }
+    ic.dataset.kind = k;
+    ic.innerHTML = DXE.ICONS.svg(k, 52);
+    if (a.icon && a.icon.parentElement) a.icon.parentElement.insertBefore(ic, a.icon);
+    else { ic.setAttribute('data-dxe-o', 'icon'); tile.insertBefore(ic, tile.firstChild); }
+  }
+
+  /* Section of each cell ("Folders" / "Files" headers between rows), used as a
+     folder hint by SEL.isFolder. */
+  function tagSections(rowsParent) {
+    let sec = null;
+    for (const c of rowsParent.children) {
+      if (c.hasAttribute('data-dxe-row') || c.hasAttribute('data-dxe-cell')) { if (sec) c.setAttribute('data-dxe-section', sec); continue; }
+      const t = SEL.norm(c.textContent);
+      if (/^(folders|フォルダ)$/i.test(t)) sec = 'folders';
+      else if (/^(files|ファイル)$/i.test(t)) sec = 'files';
+    }
+  }
+
   function syncSelection(tile) {
     tile.toggleAttribute('data-dxe-sel', SEL.isSelected(tile));
   }
@@ -103,10 +134,21 @@
     const items = SEL.allItems();
     let tiles = 0, rows = 0;
     for (const item of items) {
+      // carousels / suggestion lists (Home, quick access) are left alone
+      const sg = item.closest('[data-dxe-sugg]');
+      if (sg) {
+        // tagged before suggestions.js recognised the carousel → undo
+        if (sg.querySelector('[data-dxe-tile],[data-dxe-ficon]') || ATTRS.some((a) => sg.hasAttribute(a))) {
+          [sg, ...sg.querySelectorAll('*')].forEach((el) => ATTRS.forEach((a) => el.removeAttribute(a)));
+          sg.querySelectorAll('[data-dxe-ficon]').forEach((el) => el.remove());
+        }
+        continue;
+      }
       if (!SEL.isGridTile(item)) { rows++; continue; }
       tiles++;
-      tagTile(item);
+      const a = tagTile(item);
       tagContainers(item);
+      try { fluentIcon(item, a); } catch (e) { DXE.warn('fluent icon', e); }
       syncSelection(item);
     }
     stats.items = items.length;
@@ -114,6 +156,7 @@
     stats.listRows = rows;
     stats.rows = document.querySelectorAll('[data-dxe-row]').length;
     stats.rowsParents = document.querySelectorAll('[data-dxe-rows]').length;
+    document.querySelectorAll('[data-dxe-rows]').forEach(tagSections);
     if (DXE.settings.debug && (stats.scans < 5 || stats.scans % 50 === 0)) {
       DXE.log(`scan #${stats.scans}: ${items.length} items, ${tiles} grid tiles, ${rows} list rows, ` +
         `${stats.rows} rows, ${stats.rowsParents} row containers`, JSON.parse(JSON.stringify(stats)));
@@ -137,6 +180,7 @@
         observer = new MutationObserver((muts) => {
           for (const m of muts) {
             const t = m.target;
+            if (m.type === 'childList' && [...m.addedNodes, ...m.removedNodes].every((n) => n.nodeType === 1 && n.hasAttribute && n.hasAttribute('data-dxe-ficon'))) continue;
             if (m.type === 'attributes' && t.closest && t.closest('[data-dxe-tile]') && m.attributeName !== 'aria-selected' && m.attributeName !== 'aria-checked') continue;
             schedule();
             return;
@@ -154,9 +198,11 @@
       document.documentElement.classList.remove('dxe-medium');
       if (observer) { observer.disconnect(); observer = null; }
       ATTRS.forEach((a) => document.querySelectorAll('[' + a + ']').forEach((el) => el.removeAttribute(a)));
+      document.querySelectorAll('[data-dxe-ficon]').forEach((el) => el.remove());
       seen = new WeakMap();
       DXE.log('medium icons: disabled');
     },
     rescan: scan,
+    refresh() { if (!enabled) return; seen = new WeakMap(); schedule(); },
   };
 })();

@@ -255,6 +255,11 @@
     } finally {
       record(log);
       DXE.log('action', id, log.ok ? 'OK' : 'FAILED', log.steps);
+      if (id === 'delete' && log.ok) {
+        let n = 1;
+        try { n = targets(ctx).length || 1; } catch (e) { /* ignore */ }
+        document.dispatchEvent(new CustomEvent('dxe-deleted', { detail: n }));
+      }
     }
   }
 

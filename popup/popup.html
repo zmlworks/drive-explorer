@@ -24,6 +24,32 @@
   </section>
 
   <section>
+    <h2 data-i18n="secExplorer"></h2>
+    <label class="row"><span><span data-i18n="optExplorerToolbar"></span><em data-i18n="optExplorerToolbarHint"></em></span>
+      <input type="checkbox" class="sw" data-key="explorerToolbar"></label>
+    <label class="row"><span><span data-i18n="optStatusBar"></span></span>
+      <input type="checkbox" class="sw" data-key="statusBar"></label>
+    <label class="row"><span><span data-i18n="optFluentIcons"></span><em data-i18n="optFluentIconsHint"></em></span>
+      <input type="checkbox" class="sw" data-key="fluentIcons"></label>
+    <label class="row"><span><span data-i18n="optHideSuggestions"></span><em data-i18n="optHideSuggestionsHint"></em></span>
+      <input type="checkbox" class="sw" data-key="hideSuggestions"></label>
+    <label class="row"><span><span data-i18n="optRecycleBin"></span><em data-i18n="optRecycleBinHint"></em></span>
+      <input type="checkbox" class="sw" data-key="recycleBin"></label>
+    <label class="row"><span><span data-i18n="optCtrlCCopiesLink"></span><em data-i18n="optCtrlCCopiesLinkHint"></em></span>
+      <input type="checkbox" class="sw" data-key="ctrlCCopiesLink"></label>
+    <label class="row"><span><span data-i18n="optOpenFilesIn"></span><em data-i18n="optOpenFilesInHint"></em></span>
+      <select data-key="openFilesIn">
+        <option value="tab" data-i18n="openTab"></option>
+        <option value="window" data-i18n="openWindow"></option>
+        <option value="drive" data-i18n="openDrive"></option>
+      </select></label>
+    <label class="row"><span><span data-i18n="optRootRedirectApp"></span><em data-i18n="optRootRedirectAppHint"></em></span>
+      <input type="checkbox" class="sw" data-key="rootRedirectApp"></label>
+    <label class="row"><span><span data-i18n="optRootRedirectTabs"></span><em data-i18n="optRootRedirectTabsHint"></em></span>
+      <input type="checkbox" class="sw" data-key="rootRedirectTabs"></label>
+  </section>
+
+  <section>
     <h2 data-i18n="secDocs"></h2>
     <label class="row"><span data-i18n="optDarkDocs"></span><input type="checkbox" class="sw" data-key="darkDocs"></label>
     <label class="row"><span data-i18n="optDarkSheets"></span><input type="checkbox" class="sw" data-key="darkSheets"></label>
@@ -34,6 +60,7 @@
     <h2 data-i18n="secAdvanced"></h2>
     <label class="row"><span data-i18n="optDebug"></span><input type="checkbox" class="sw" data-key="debug"></label>
     <button id="diag" type="button" data-i18n="btnDiag"></button>
+    <button id="structure" type="button" data-i18n="btnStructure"></button>
     <p id="status" role="status"></p>
   </section>
 

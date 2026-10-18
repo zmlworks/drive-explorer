@@ -10,7 +10,7 @@
     en: {
       title: '{0} Properties', general: 'General', details: 'Details', ok: 'OK', cancel: 'Cancel', close: 'Close',
       loading: 'Reading details from Google Drive…',
-      failed: 'Couldn’t read the details from Google Drive.', failedHint: 'To see them in Drive: turn off “Hide Drive’s details side panel” in the extension popup, then use “Show Drive menu” → File information → Details.',
+      failed: 'Couldn’t read the details from Google Drive.', failedHint: 'To see them in Drive: turn off “Hide Drive’s details side panel” in the extension popup, then use “Show Drive menu” → File information → Details. To help fix this: popup → “Copy page structure” (with the details pane open) and send it.',
       none: 'No fields were found.', property: 'Property', value: 'Value', id: 'ID',
       f: { type: 'Type', location: 'Location', size: 'Size', storage: 'Storage used', owner: 'Owner', modified: 'Modified',
         opened: 'Opened', created: 'Created', access: 'Access', download: 'Download permissions', description: 'Description', shared: 'Shared' },
@@ -18,7 +18,7 @@
     ja: {
       title: '{0} のプロパティ', general: '全般', details: '詳細', ok: 'OK', cancel: 'キャンセル', close: '閉じる',
       loading: 'Google ドライブから情報を取得しています…',
-      failed: 'Google ドライブから情報を取得できませんでした。', failedHint: 'ドライブ上で確認するには、拡張機能のポップアップで「ドライブの詳細パネルを表示しない」をオフにしてから「ドライブのメニューを表示」→ ファイル情報 → 詳細 を開いてください。',
+      failed: 'Google ドライブから情報を取得できませんでした。', failedHint: 'ドライブ上で確認するには、拡張機能のポップアップで「ドライブの詳細パネルを表示しない」をオフにしてから「ドライブのメニューを表示」→ ファイル情報 → 詳細 を開いてください。改善のため、詳細パネルを開いた状態でポップアップの「ページ構造をコピー」を送ってください。',
       none: '項目が見つかりませんでした。', property: 'プロパティ', value: '値', id: 'ID',
       f: { type: '種類', location: '場所', size: 'サイズ', storage: '使用容量', owner: '所有者', modified: '更新日時',
         opened: '最終閲覧', created: '作成日時', access: 'アクセス', download: 'ダウンロード権限', description: '説明', shared: '共有日' },

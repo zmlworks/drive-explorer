@@ -3,7 +3,7 @@
     "message": "Drive Explorer (Win11 style)"
   },
   "extDescription": {
-    "message": "Makes Google Drive feel like Windows 11 File Explorer: medium icons view, Win11-style context menu, and dark mode for Docs/Sheets/Slides."
+    "message": "Makes Google Drive feel like Windows 11 File Explorer: medium icons, Fluent icons, a Win11 context menu, Properties, a toolbar with an address bar, a Recycle Bin, and dark mode for Docs/Sheets/Slides."
   },
   "secDrive": {
     "message": "Google Drive"
@@ -55,5 +55,74 @@
   },
   "optSuppressDetailsHint": {
     "message": "Keeps the right-hand Details pane from appearing. Use Properties (Alt+Enter) instead."
+  },
+  "secExplorer": {
+    "message": "Explorer features"
+  },
+  "optExplorerToolbar": {
+    "message": "Explorer toolbar and address bar"
+  },
+  "optExplorerToolbarHint": {
+    "message": "← → ↑ and refresh buttons, a /path address bar and a view switch. Alt+↑ or Backspace goes up."
+  },
+  "optStatusBar": {
+    "message": "Status bar (item and selection count)"
+  },
+  "optFluentIcons": {
+    "message": "Windows 11 file icons"
+  },
+  "optFluentIconsHint": {
+    "message": "Yellow folders and Fluent-style type icons in medium icons view. Thumbnails are kept."
+  },
+  "optHideSuggestions": {
+    "message": "Hide suggestions"
+  },
+  "optHideSuggestionsHint": {
+    "message": "Hides Suggested folders/files, quick access and Gemini chips on Home and My Drive."
+  },
+  "optRecycleBin": {
+    "message": "Recycle Bin on the desktop"
+  },
+  "optRecycleBinHint": {
+    "message": "Double-click it to open Trash, or drop items on it to delete them (Ctrl+Z undoes)."
+  },
+  "optCtrlCCopiesLink": {
+    "message": "Ctrl+C copies the link"
+  },
+  "optCtrlCCopiesLinkHint": {
+    "message": "Replaces Drive's own Ctrl+C (copy/paste of items) with copy link."
+  },
+  "optOpenFilesIn": {
+    "message": "Open files in"
+  },
+  "optOpenFilesInHint": {
+    "message": "Folders always open in place."
+  },
+  "openTab": {
+    "message": "New tab"
+  },
+  "openWindow": {
+    "message": "New window"
+  },
+  "openDrive": {
+    "message": "Drive default"
+  },
+  "optRootRedirectApp": {
+    "message": "App window starts in My Drive"
+  },
+  "optRootRedirectAppHint": {
+    "message": "In an installed Drive app window, the Home page redirects once to My Drive."
+  },
+  "optRootRedirectTabs": {
+    "message": "Normal tabs start in My Drive too"
+  },
+  "optRootRedirectTabsHint": {
+    "message": "Same redirect for regular browser tabs."
+  },
+  "btnStructure": {
+    "message": "Copy page structure (for bug reports)"
+  },
+  "structureCopied": {
+    "message": "Page structure copied ($1). File names and IDs are removed."
   }
 }

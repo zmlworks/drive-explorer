@@ -13,9 +13,11 @@
   const stats = (DXE.detailsStats = { tagged: 0, strategy: null, lastScrape: null });
 
   let panel = null;
-  function tag() {
+  let prevListWidth = null; // list width before the last user action
+  function tag(useSide) {
     if (panel && panel.isConnected && panel.hasAttribute('data-dxe-details')) return panel;
-    const p = SEL.findDetailsPanel();
+    let p = SEL.findDetailsPanel();
+    if (!p && useSide !== false) p = SEL.findSidePanel(prevListWidth);
     if (p && p !== panel) {
       if (panel) panel.removeAttribute('data-dxe-details');
       p.setAttribute('data-dxe-details', '');
@@ -120,7 +122,8 @@
   /* ---------- read(item) ---------- */
   async function read(ctx, { timeout = 4500 } = {}) {
     const html = document.documentElement;
-    const wasOpen = !!(tag() && SEL.isShown(panel));
+    const wasOpen = !!(tag(false) && SEL.isShown(panel));
+    prevListWidth = SEL.listWidth();
     html.classList.add('dxe-props-busy');
     const res = { ok: false, pairs: [], why: '', opened: false };
     try {
@@ -141,7 +144,7 @@
           // menu route didn't open it → try the toolbar "View details" (i) button once
           if (!toolbarTried && performance.now() - t0 > 1500) {
             toolbarTried = true;
-            const b = SEL.findToolbarButton(SEL.ACTIONS.info.toolbar);
+            const b = SEL.findToolbarButton(SEL.ACTIONS.info.toolbar) || SEL.findToolbarButton(D.toolbarDetails);
             DXE.log('details panel not open yet; toolbar button', b ? 'clicked' : 'not found');
             if (b) DXE.native.activate(b);
           }
@@ -175,9 +178,23 @@
 
   // Drive may keep the pane in the DOM and only toggle its size/visibility,
   // which adds no nodes: re-check after user input and periodically.
-  const soon = () => { setTimeout(check, 40); setTimeout(check, 350); };
+  const soon = () => { setTimeout(check, 40); setTimeout(check, 350); setTimeout(check, 900); };
+  const measure = () => { if (!panel || !panel.isConnected) prevListWidth = SEL.listWidth(); };
+  window.addEventListener('pointerdown', measure, true);
+  window.addEventListener('keydown', measure, true);
   window.addEventListener('pointerup', soon, true);
   window.addEventListener('keyup', soon, true);
+
+  // aria-label based hiding, pure CSS (works even before we detect anything)
+  const css = document.createElement('style');
+  css.setAttribute('data-dxe-ui', '');
+  const hideRule = 'position:fixed!important;top:0!important;right:0!important;left:auto!important;width:360px!important;max-width:360px!important;' +
+    'min-width:0!important;height:100vh!important;margin:0!important;opacity:0!important;pointer-events:none!important;z-index:-1!important;transition:none!important;animation:none!important;';
+  try {
+    const sel = SEL.panelAriaSelector();
+    css.textContent = `html.dxe-hide-details ${sel}, html.dxe-props-busy ${sel} {${hideRule}}`;
+  } catch (e) { /* :has unsupported */ }
+  (document.head || document.documentElement).appendChild(css);
   setInterval(() => { if (!panel || !panel.isConnected) check(); }, 1500);
 
   DXE.details = {

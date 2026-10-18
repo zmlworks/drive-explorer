@@ -44,6 +44,23 @@
     DXE.native.perform(f2 ? 'rename' : 'properties', { item, target: item });
   }
 
+  /* ---------- Ctrl+C = copy link(s) of the selected items ---------- */
+  function onCopyKey(e) {
+    if (!DXE.settings.ctrlCCopiesLink || !e.isTrusted) return;
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'c') return;
+    const a = document.activeElement;
+    if (a && a.closest && (a.closest(SEL.editable) || SEL.isOurs(a) || a.closest('[role="dialog"]'))) return;
+    const ts = window.getSelection && String(window.getSelection() || '');
+    if (ts && ts.trim()) return; // copying page text: leave it alone
+    if (DXE.menu.isOpen() || (DXE.props && DXE.props.isOpen())) return;
+    const sel = SEL.selectedItems();
+    if (!sel.length) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    DXE.native.perform('copyLink', { item: sel[0], target: sel[0] });
+  }
+  window.addEventListener('keydown', onCopyKey, true);
+
   /* ---------- diagnostics for bug reports (no file names / ids) ---------- */
   function skeleton(el, depth = 0, max = 7) {
     if (!el || depth > max) return null;
@@ -93,13 +110,21 @@
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       if (msg && msg.type === 'dxe-report') { reply(report()); }
+      else if (msg && msg.type === 'dxe-structure') { try { reply({ ok: true, text: DXE.structure.dump() }); } catch (e) { reply({ ok: false, error: String(e) }); } }
       return false;
     });
   }
 
   /* ---------- settings ---------- */
   function apply() {
-    if (DXE.settings.mediumIcons) DXE.tiles.enable(); else DXE.tiles.disable();
+    const S = DXE.settings, html = document.documentElement;
+    html.classList.toggle('dxe-fluent', !!S.fluentIcons);
+    if (S.mediumIcons) DXE.tiles.enable(); else DXE.tiles.disable();
+    if (DXE.tiles.refresh) DXE.tiles.refresh();
+    if (DXE.suggestions) DXE.suggestions.apply(S.hideSuggestions);
+    if (DXE.toolbar) DXE.toolbar.apply();
+    if (DXE.statusbar) DXE.statusbar.apply();
+    if (DXE.bin) DXE.bin.apply();
     DXE.details.setSuppressed(DXE.settings.suppressDetails);
     if (!DXE.settings.contextMenu) DXE.menu.hide();
     DXE.detectTheme();
@@ -117,7 +142,7 @@
     DXE.log('started', { version: DXE.VERSION, selectors: SEL.revision, settings: DXE.settings, uiLang: SEL.uiLang() });
   });
   DXE.onSettingsChanged((diff) => {
-    if ('mediumIcons' in diff || 'contextMenu' in diff || 'suppressDetails' in diff) apply();
+    apply();
     if ('debug' in diff && diff.debug) console.log('[DriveExplorer] debug on. Report:', report());
   });
 })();

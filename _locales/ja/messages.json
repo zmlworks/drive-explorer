@@ -3,7 +3,7 @@
     "message": "Drive Explorer（Win11 風）"
   },
   "extDescription": {
-    "message": "Google ドライブを Windows 11 のエクスプローラー風に：中アイコン表示、Win11 風右クリックメニュー、ドキュメント/スプレッドシート/スライドのダークモード。"
+    "message": "Google ドライブを Windows 11 のエクスプローラー風に：中アイコン、Fluent アイコン、Win11 風右クリックメニュー、プロパティ、アドレス バー付きツールバー、ごみ箱、ドキュメント/スプレッドシート/スライドのダークモード。"
   },
   "secDrive": {
     "message": "Google ドライブ"
@@ -55,5 +55,74 @@
   },
   "optSuppressDetailsHint": {
     "message": "右側の「詳細（ファイル情報）」パネルを表示しません。代わりにプロパティ（Alt+Enter）を使います。"
+  },
+  "secExplorer": {
+    "message": "エクスプローラー機能"
+  },
+  "optExplorerToolbar": {
+    "message": "ツールバーとアドレス バー"
+  },
+  "optExplorerToolbarHint": {
+    "message": "← → ↑ と更新のボタン、/パス 形式のアドレス バー、表示の切り替え。Alt+↑ または Backspace で上の階層へ移動します。"
+  },
+  "optStatusBar": {
+    "message": "ステータス バー (項目数と選択数)"
+  },
+  "optFluentIcons": {
+    "message": "Windows 11 のファイル アイコン"
+  },
+  "optFluentIconsHint": {
+    "message": "中アイコン表示で、黄色いフォルダーと Fluent 風の種類アイコンを使います。サムネイルはそのまま表示します。"
+  },
+  "optHideSuggestions": {
+    "message": "おすすめを非表示"
+  },
+  "optHideSuggestionsHint": {
+    "message": "ホームとマイドライブの「おすすめのフォルダ/ファイル」、クイック アクセス、Gemini のチップを隠します。"
+  },
+  "optRecycleBin": {
+    "message": "デスクトップのごみ箱"
+  },
+  "optRecycleBinHint": {
+    "message": "ダブルクリックでゴミ箱を開きます。項目をドロップすると削除します (Ctrl+Z で元に戻せます)。"
+  },
+  "optCtrlCCopiesLink": {
+    "message": "Ctrl+C でリンクをコピー"
+  },
+  "optCtrlCCopiesLinkHint": {
+    "message": "ドライブ標準の Ctrl+C (項目のコピー＆貼り付け) の代わりにリンクをコピーします。"
+  },
+  "optOpenFilesIn": {
+    "message": "ファイルを開く場所"
+  },
+  "optOpenFilesInHint": {
+    "message": "フォルダーは常に同じ画面で開きます。"
+  },
+  "openTab": {
+    "message": "新しいタブ"
+  },
+  "openWindow": {
+    "message": "新しいウィンドウ"
+  },
+  "openDrive": {
+    "message": "ドライブの既定"
+  },
+  "optRootRedirectApp": {
+    "message": "アプリ ウィンドウはマイドライブから開始"
+  },
+  "optRootRedirectAppHint": {
+    "message": "インストールしたドライブ アプリのウィンドウで、ホームを開いたときに 1 回だけマイドライブへ移動します。"
+  },
+  "optRootRedirectTabs": {
+    "message": "通常のタブでもマイドライブから開始"
+  },
+  "optRootRedirectTabsHint": {
+    "message": "通常のブラウザー タブでも同じ移動をします。"
+  },
+  "btnStructure": {
+    "message": "ページ構造をコピー (不具合報告用)"
+  },
+  "structureCopied": {
+    "message": "ページ構造をコピーしました ($1)。ファイル名と ID は除去済みです。"
   }
 }

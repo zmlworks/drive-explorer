@@ -25,8 +25,10 @@ const shim = (settings) => `
       storage: { sync: {
         get(d, cb) { cb(Object.assign({}, d, store)); },
         set(o) { const ch = {}; for (const k in o) { ch[k] = { oldValue: store[k], newValue: o[k] }; store[k] = o[k]; } ls.forEach((f) => f(ch, 'sync')); },
-      }, onChanged: { addListener(f) { ls.push(f); } } },
-      runtime: { onMessage: { addListener() {} } },
+      }, local: { _s: {}, get(k, cb) { cb({ [k]: this._s[k] }); }, set(o) { Object.assign(this._s, o); } },
+      onChanged: { addListener(f) { ls.push(f); } } },
+      runtime: { onMessage: { addListener() {} }, lastError: null,
+        sendMessage(m, cb) { (window.__sent = window.__sent || []).push(m); cb && cb({ ok: true }); } },
     };
   })();`;
 
@@ -63,7 +65,7 @@ for (const lang of ['en', 'ja']) {
       await page.screenshot({ path: path.join(OUT, `00-original-drive-mock-${tag}.png`) });
       await ctx.close();
     }
-    const { ctx, page } = await openDrive({ hl: lang, theme, nolog: 1 }, { mediumIcons: true, contextMenu: true, debug: true });
+    const { ctx, page } = await openDrive({ hl: lang, theme, nolog: 1 }, { mediumIcons: true, contextMenu: true, debug: true, openFilesIn: 'drive' });
     const stats = await page.evaluate(() => DXE.tileStats);
     check(`[${tag}] tiles detected`, stats.tiles === 15, JSON.stringify({ tiles: stats.tiles, thumbs: stats.withThumb, name: stats.nameStrategy, cont: stats.containerStrategy }));
     // name below thumbnail
@@ -326,9 +328,189 @@ for (const on of [false, true]) {
   await ctx.close();
 }
 
+// ---------------- 0.3.0: Explorer features ----------------
+const tbState = (page) => page.evaluate(() => {
+  const r = document.getElementById('dxe-toolbar-host')?.shadowRoot;
+  if (!r) return null;
+  const b = (id) => r.querySelector(`button[data-id="${id}"]`);
+  return { addr: r.querySelector('.addr').innerText.replace(/\s+/g, ''), path: DXE.pathText(), upDisabled: b('up').disabled,
+    medium: b('medium').getAttribute('aria-pressed'), list: b('list').getAttribute('aria-pressed') };
+});
+for (const lang of ['en', 'ja']) {
+  for (const theme of ['light', 'dark']) {
+    const tag = `${lang}-${theme}`;
+    // toolbar + address bar from breadcrumbs, status bar, fluent icons
+    {
+      const { ctx, page } = await openDrive({ hl: lang, theme, nolog: 1, crumbs: lang === 'ja' ? 'プロジェクト資料/2026年' : 'Project files/2026' }, {});
+      await page.waitForTimeout(400);
+      const tb = await tbState(page);
+      const want = lang === 'ja' ? '/プロジェクト資料/2026年' : '/Project files/2026';
+      check(`[${tag}] address bar /path from breadcrumbs`, tb && tb.path === want && !tb.upDisabled, JSON.stringify(tb));
+      const fic = await page.evaluate(() => [...document.querySelectorAll('[data-dxe-ficon]')].map((e) => e.dataset.kind));
+      check(`[${tag}] Fluent icons for items without thumbnails`, fic.filter((k) => k === 'folder').length === 5 && fic.length === 5, fic.join(','));
+      await tileByName(page, 'beach.png').click();
+      await tileByName(page, 'sunset.jpg').click({ modifiers: ['Control'] });
+      await page.waitForTimeout(400);
+      const sb = await page.evaluate(() => DXE.statusText);
+      const sbWant = lang === 'ja' ? '15 個の項目2 個の項目を選択' : '15 items2 items selected';
+      check(`[${tag}] status bar counts`, sb === sbWant, sb);
+      await page.locator('#dxe-toolbar-host >> button[data-id="up"]').hover();
+      await page.waitForTimeout(100);
+      await page.screenshot({ path: path.join(OUT, `12-explorer-toolbar-statusbar-${tag}.png`) });
+      if (theme === 'light') {
+        // ↑ button → previous breadcrumb segment
+        let n0 = await count(page);
+        await page.locator('#dxe-toolbar-host >> button[data-id="up"]').click();
+        await page.waitForTimeout(300);
+        const up1 = lang === 'ja' ? 'CRUMB プロジェクト資料' : 'CRUMB Project files';
+        check(`[${tag}] ↑ goes to parent via breadcrumb`, (await actionsSince(page, n0)).includes(up1), (await actionsSince(page, n0)).join(' | '));
+        // Alt+Up and Backspace (not while typing)
+        await tileByName(page, 'beach.png').click();
+        n0 = await count(page);
+        await page.keyboard.press('Alt+ArrowUp');
+        await page.waitForTimeout(200);
+        await page.keyboard.press('Backspace');
+        await page.waitForTimeout(200);
+        const a = await actionsSince(page, n0);
+        check(`[${tag}] Alt+↑ and Backspace go up`, a.filter((x) => x === up1).length === 2, a.join(' | '));
+        // view switch → Drive's layout radio
+        n0 = await count(page);
+        await page.locator('#dxe-toolbar-host >> button[data-id="list"]').click();
+        await page.waitForTimeout(200);
+        check(`[${tag}] view switch clicks Drive's layout button`, (await actionsSince(page, n0)).includes('LAYOUT list'));
+        // segment click
+        n0 = await count(page);
+        await page.locator('#dxe-toolbar-host >> .seg.link >> nth=0').click();
+        await page.waitForTimeout(200);
+        check(`[${tag}] address segment "/" navigates to My Drive breadcrumb`, (await actionsSince(page, n0)).includes('CRUMB ' + (lang === 'ja' ? 'マイドライブ' : 'My Drive')));
+      }
+      await ctx.close();
+    }
+  }
+  // at My Drive root: '/', up disabled
+  {
+    const { ctx, page } = await openDrive({ hl: lang, nolog: 1, crumbs: 'root' }, {});
+    await page.waitForTimeout(400);
+    const tb = await tbState(page);
+    check(`[${lang}] My Drive root shows "/" and ↑ disabled`, tb && tb.path === '/' && tb.upDisabled && tb.medium === 'true', JSON.stringify(tb));
+    await ctx.close();
+  }
+  // suggestions hidden on Home (+ Gemini chip); list kept
+  for (const hide of [true, false]) {
+    const { ctx, page } = await openDrive({ hl: lang, nolog: 1, page: 'home' }, { hideSuggestions: hide });
+    await page.waitForTimeout(900);
+    const st = await page.evaluate(() => ({
+      sugg: [...document.querySelectorAll('.sgw,.gem')].filter((e) => e.getBoundingClientRect().height > 0).length,
+      tiles: [...document.querySelectorAll('#grid [data-dxe-tile]')].filter((e) => e.getBoundingClientRect().height > 0).length,
+      gridVisible: document.getElementById('grid').getBoundingClientRect().height > 0,
+    }));
+    check(`[${lang}] suggestions ${hide ? 'hidden' : 'shown'} on Home, main list intact`, (hide ? st.sugg === 0 : st.sugg === 3) && st.gridVisible && st.tiles === 15, JSON.stringify(st));
+    await page.screenshot({ path: path.join(OUT, `13-home-suggestions-${hide ? 'hidden' : 'shown'}-${lang}-light.png`) });
+    await ctx.close();
+  }
+}
+
+// open files in a new tab (dblclick / Enter / menu Open); folders in place
+{
+  const { ctx, page } = await openDrive({ hl: 'en', nolog: 1 }, { openFilesIn: 'tab' });
+  const sent = () => page.evaluate(() => (window.__sent || []).filter((m) => m.type === 'dxe-open'));
+  let n0 = await count(page);
+  await tileByName(page, 'beach.png').dblclick();
+  await page.waitForTimeout(300);
+  let s = await sent();
+  check('[open] dblclick on a file → background opens a new tab (Drive not opening in place)', s.length === 1 && s[0].mode === 'tab' && /drive\.google\.com/.test(s[0].urls[0]) && !(await actionsSince(page, n0)).some((a) => a.startsWith('OPEN')), JSON.stringify(s));
+  n0 = await count(page);
+  await tileByName(page, 'Photos').dblclick();
+  await page.waitForTimeout(300);
+  check('[open] dblclick on a folder → Drive navigates in place', (await actionsSince(page, n0)).some((a) => a.startsWith('OPEN Photos')) && (await sent()).length === 1);
+  await tileByName(page, 'README.txt').click();
+  await page.waitForTimeout(700);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(200);
+  check('[open] Enter on a selected file → new tab', (await sent()).length === 2);
+  await tileByName(page, 'budget.xlsx').click({ button: 'right', position: { x: 30, y: 30 } });
+  await menuItem(page, 'open').click();
+  await page.waitForTimeout(800);
+  check('[open] menu "Open" on a file → new tab', (await sent()).length === 3);
+  await page.evaluate(() => chrome.storage.sync.set({ openFilesIn: 'window' }));
+  await page.waitForTimeout(700);
+  await tileByName(page, 'mountains.jpg').dblclick();
+  await page.waitForTimeout(300);
+  check('[open] "new window" mode', (await sent()).slice(-1)[0].mode === 'window');
+  // Ctrl+C = copy link
+  n0 = await count(page);
+  await tileByName(page, 'beach.png').click();
+  await page.keyboard.press('Control+c');
+  await page.waitForTimeout(1600);
+  check('[keys] Ctrl+C → Drive "Copy link"', (await actionsSince(page, n0)).includes('MENU Copy link'), (await actionsSince(page, n0)).join(' | '));
+  await ctx.close();
+}
+
+// Recycle Bin: drop → Drive delete, icon full, context menu
+for (const lang of ['en', 'ja']) {
+  for (const theme of ['light', 'dark']) {
+    const tag = `${lang}-${theme}`;
+    const { ctx, page } = await openDrive({ hl: lang, theme, nolog: 1 }, {});
+    const bin = page.locator('#dxe-bin-host >> .bin');
+    const state0 = await bin.getAttribute('data-state');
+    const t = tileByName(page, 'README.txt');
+    await t.click();
+    await page.waitForTimeout(300);
+    const n0 = await count(page);
+    const tb = await t.boundingBox(), bb = await bin.boundingBox();
+    await page.mouse.move(tb.x + 40, tb.y + 40);
+    await page.mouse.down();
+    await page.mouse.move(tb.x + 80, tb.y + 60, { steps: 4 });
+    await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2, { steps: 12 });
+    await page.waitForTimeout(120);
+    if (theme === 'light') await page.screenshot({ path: path.join(OUT, `14-recycle-bin-drag-over-${tag}.png`) });
+    await page.mouse.up();
+    await page.waitForTimeout(1800);
+    const acts = await actionsSince(page, n0);
+    const del = lang === 'ja' ? 'MENU ゴミ箱に移動' : 'MENU Move to trash';
+    const state1 = await bin.getAttribute('data-state');
+    check(`[${tag}] drop on Recycle Bin → Drive "${del.slice(5)}", icon full`, acts.filter((a) => a === del).length === 1 && state0 === 'empty' && state1 === 'full', acts.join(' | ') + ` ${state0}→${state1}`);
+    await page.screenshot({ path: path.join(OUT, `15-recycle-bin-full-toast-${tag}.png`) });
+    await bin.click({ button: 'right' });
+    await page.waitForTimeout(200);
+    const items = await page.evaluate(() => [...document.getElementById('dxe-menu-host').shadowRoot.querySelectorAll('.item')].map((i) => i.dataset.action));
+    check(`[${tag}] Recycle Bin context menu`, items.join() === 'binOpen,binEmpty', items.join());
+    await page.screenshot({ path: path.join(OUT, `16-recycle-bin-menu-${tag}.png`) });
+    await page.keyboard.press('Escape');
+    await ctx.close();
+  }
+}
+
+// details pane without tabs → right-column heuristic (geometry + list shrink)
+{
+  const { ctx, page } = await openDrive({ hl: 'en', nolog: 1, autodetails: 1, dpnotabs: 1 }, { suppressDetails: true });
+  await tileByName(page, 'mountains.jpg').click();
+  await page.waitForTimeout(1300);
+  const pi = await page.evaluate(() => { const p = document.querySelector('[data-dxe-details]'); return { open: window.__details.isOpen(), tagged: !!p, isDp: !!(p && p.classList.contains('dp')), opacity: p ? getComputedStyle(p).opacity : null, strategy: DXE.detailsStats && DXE.detailsStats.strategy, grid: getComputedStyle(document.getElementById('grid')).opacity }; });
+  check('[heuristic] tab-less right pane hidden via side-heuristic, list untouched', pi.open && pi.isDp && pi.opacity === '0' && pi.grid === '1', JSON.stringify(pi));
+  await page.screenshot({ path: path.join(OUT, '17-side-heuristic-pane-hidden-en-light.png') });
+  // page structure dump (with the pane open)
+  const dump = await page.evaluate(() => DXE.structure.dump());
+  const leaks = ['beach.png', 'mountains.jpg', 'Meeting notes', 'README', '1AbC'].filter((x) => dump.includes(x));
+  check('[structure] sanitized dump: no names/ids, has roles, right panel, <200KB', !leaks.length && /role=grid/.test(dump) && /## right-side column candidates \([1-9]/.test(dump) && dump.length < 210000 && /"Move to trash"/.test(dump), 'leaks=' + leaks.join(',') + ' len=' + dump.length);
+  fs.writeFileSync(path.join(OUT, 'page-structure-sample.txt'), dump);
+  await ctx.close();
+}
+// toggles off → no toolbar/status/bin/ficons
+{
+  const { ctx, page } = await openDrive({ hl: 'en', nolog: 1 }, { explorerToolbar: false, statusBar: false, recycleBin: false, fluentIcons: false });
+  const st = await page.evaluate(() => ['dxe-toolbar-host', 'dxe-status-host', 'dxe-bin-host'].filter((i) => document.getElementById(i)).length + document.querySelectorAll('[data-dxe-ficon]').length);
+  check('[toggles] Explorer extras all off', st === 0, String(st));
+  await page.evaluate(() => chrome.storage.sync.set({ explorerToolbar: true, statusBar: true, recycleBin: true, fluentIcons: true }));
+  await page.waitForTimeout(900);
+  const st2 = await page.evaluate(() => ['dxe-toolbar-host', 'dxe-status-host', 'dxe-bin-host'].filter((i) => document.getElementById(i)).length + ':' + document.querySelectorAll('[data-dxe-ficon]').length);
+  check('[toggles] … and on again live', st2 === '3:5', st2);
+  await ctx.close();
+}
+
 // Popup render (light + dark), with a chrome shim
 for (const theme of ['light', 'dark']) {
-  const ctx = await browser.newContext({ viewport: { width: 364, height: 560 }, colorScheme: theme });
+  const ctx = await browser.newContext({ viewport: { width: 364, height: 900 }, colorScheme: theme });
   const page = await ctx.newPage();
   const msgs = JSON.parse(fs.readFileSync(path.join(ROOT, '_locales', theme === 'dark' ? 'ja' : 'en', 'messages.json'), 'utf8'));
   await page.addInitScript(`(() => { const M = ${JSON.stringify(msgs)}; const store = { darkDocs: true };

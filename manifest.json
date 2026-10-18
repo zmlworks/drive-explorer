@@ -3,7 +3,7 @@
   "name": "__MSG_extName__",
   "short_name": "Drive Explorer",
   "description": "__MSG_extDescription__",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "default_locale": "en",
   "minimum_chrome_version": "111",
   "icons": {
@@ -33,7 +33,9 @@
         "https://drive.google.com/*"
       ],
       "js": [
-        "src/drive/early.js"
+        "src/common/settings.js",
+        "src/drive/early.js",
+        "src/drive/root-redirect.js"
       ],
       "run_at": "document_start",
       "all_frames": false
@@ -46,11 +48,18 @@
         "src/common/settings.js",
         "src/drive/selectors.js",
         "src/drive/theme.js",
+        "src/drive/fluent-icons.js",
         "src/drive/tiles.js",
         "src/drive/native-actions.js",
         "src/drive/context-menu.js",
         "src/drive/details.js",
         "src/drive/properties.js",
+        "src/drive/structure.js",
+        "src/drive/toolbar.js",
+        "src/drive/suggestions.js",
+        "src/drive/open-files.js",
+        "src/drive/recycle.js",
+        "src/drive/statusbar.js",
         "src/drive/main.js"
       ],
       "css": [
@@ -75,5 +84,8 @@
       "run_at": "document_start",
       "all_frames": false
     }
-  ]
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  }
 }

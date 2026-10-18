@@ -12,7 +12,7 @@
   const DXE = (globalThis.DXE = globalThis.DXE || {});
 
   const S = (DXE.SEL = {
-    revision: '2026-10-18b',
+    revision: '2026-10-18c',
 
     /* Elements that represent one file/folder. Tried in order; the first
        selector whose closest() hits wins. Grid tiles and list rows both match. */
@@ -105,7 +105,7 @@
     makeCopy: { paths: [[L.MAKE_COPY]] },
     info: {
       paths: [[L.FILE_INFO, L.DETAILS], [L.DETAILS]],
-      toolbar: /^(view details|details|詳細を表示|詳細)$/i,
+      toolbar: /^(view details|show details|details|詳細を表示|詳細の表示|詳細)$/i,
     },
     delete: {
       paths: [[L.TRASH]],
@@ -215,7 +215,9 @@
     if (item.closest('[data-mime-type="application/vnd.google-apps.folder"]')) return true;
     const labels = [item.getAttribute('aria-label') || ''];
     item.querySelectorAll('[aria-label]').forEach((n) => labels.push(n.getAttribute('aria-label') || ''));
-    return labels.some((l) => /(^|\s)(shared )?folder\b|フォルダ/i.test(l));
+    if (labels.some((l) => /(^|\s)(shared )?folder\b|フォルダ/i.test(l))) return true;
+    if (item.closest('[data-dxe-section="folders"]')) return true;
+    return false;
   };
 
   S.findMoreButton = (item) => {
@@ -271,7 +273,7 @@
     res.name = nm.el;
     res.strategy.name = nm.strategy;
 
-    const imgs = [...tile.querySelectorAll('img,[role="img"],svg')].filter((el) => !el.closest('button,[role="button"]'));
+    const imgs = [...tile.querySelectorAll('img,[role="img"],svg')].filter((el) => !el.closest('button,[role="button"],[data-dxe-ficon]'));
     let best = null, bestA = 0;
     for (const el of imgs) {
       // an <svg> drawn inside a role=img wrapper is represented by the wrapper
@@ -335,7 +337,7 @@
   S.findToolbarButton = (re) => {
     const cands = document.querySelectorAll('[role="button"][aria-label],button[aria-label],[role="button"][data-tooltip]');
     for (const b of cands) {
-      if (S.isOurs(b) || b.closest('[data-id]') || b.closest(S.menu)) continue;
+      if (S.isOurs(b) || b.closest(LISTISH) || b.closest(S.menu)) continue;
       const lbl = norm(b.getAttribute('aria-label') || b.getAttribute('data-tooltip'));
       if (re.test(lbl) && S.isShown(b) && !S.isDisabled(b)) return b;
     }
@@ -441,6 +443,191 @@
       if (D.closeButton.test(l)) return b;
     }
     return null;
+  };
+
+  /* ================= 0.3.0 additions ================= */
+
+  /* aria-labels Drive may put on the details side panel (complementary/region) */
+  D.panelAriaLabels = ['Details', 'Activity', 'Details panel', 'Details and activity', 'File details', 'Info',
+    '詳細', 'アクティビティ', 'ファイル情報', '詳細パネル', '詳細とアクティビティ', 'ファイルの詳細', '情報'];
+  /* right-side heuristic (fraction of viewport / px) */
+  D.notPanel = /(calendar|keep|tasks|contacts|gemini|add-ons|カレンダー|タスク|連絡先|アドオン)/i;
+  D.side = { minLeft: 0.6, minW: 250, maxW: 500, minH: 0.55, shrinkPx: 120 };
+  D.toolbarDetails = /^(view details|show details|details|hide details|詳細を表示|詳細の表示|詳細|詳細を非表示)/i;
+
+  /* ---------- navigation / breadcrumbs ---------- */
+  S.NAV = {
+    /* first breadcrumb segment labels (roots) */
+    roots: {
+      myDrive: /^(my drive|マイドライブ)$/i,
+      sharedDrives: /^(shared drives|共有ドライブ)$/i,
+      sharedWithMe: /^(shared with me|共有アイテム)$/i,
+      computers: /^(computers|パソコン)$/i,
+      home: /^(home|ホーム)$/i,
+      trash: /^(trash|bin|ゴミ箱|ごみ箱)$/i,
+      starred: /^(starred|スター付き)$/i,
+      recent: /^(recent|最近使用したアイテム)$/i,
+    },
+    breadcrumbContainer: '[role="navigation"],nav,[aria-label*="breadcrumb" i],[aria-label*="パンくず"]',
+    /* Drive's own layout toggle (grid / list) */
+    listLayout: /^(list layout|list view|switch to list layout|リスト レイアウト|リストレイアウト|リスト表示|リスト レイアウトに切り替え)$/i,
+    gridLayout: /^(grid layout|grid view|switch to grid layout|グリッド レイアウト|グリッドレイアウト|グリッド表示|グリッド レイアウトに切り替え)$/i,
+    /* URL patterns */
+    homePath: /^\/drive(\/u\/\d+)?\/?(home)?\/?$/,
+    rootPath: /^\/?$/,
+    folderPath: /\/folders\/([A-Za-z0-9_-]+)/,
+    myDrivePath: /\/my-drive\/?$/,
+    trashPath: /\/trash\/?$/,
+  };
+  S.prefix = () => { const u = S.authUser(); return u !== null ? `/drive/u/${u}` : '/drive'; };
+  S.myDriveUrl = () => location.origin + S.prefix() + '/my-drive';
+  S.trashUrl = () => location.origin + S.prefix() + '/trash';
+  S.folderUrl = (id) => location.origin + S.prefix() + '/folders/' + encodeURIComponent(id);
+  S.currentFolderId = () => { const m = location.pathname.match(S.NAV.folderPath); return m ? m[1] : null; };
+
+  const btnText = (b) => norm(b.getAttribute('aria-label') && !norm(b.textContent) ? b.getAttribute('aria-label') : b.textContent);
+  const LISTISH = '[role="grid"],[role="row"],[role="gridcell"],[role="listbox"],[role="option"]';
+  /** Breadcrumb segments [{label, el, root?}] or null. */
+  S.breadcrumbs = () => {
+    const main = scopeEl();
+    const mr = main.getBoundingClientRect();
+    const isBtn = (el) => el.matches('[role="button"],button,a,[role="link"]');
+    const rootRe = Object.values(S.NAV.roots);
+    // candidate root buttons inside the main area (not the left nav)
+    const cands = [...document.querySelectorAll('[role="button"],button,a[href],[role="link"]')].filter((b) => {
+      if (S.isOurs(b) || b.closest(LISTISH) || b.closest(S.menu) || b.closest('[data-dxe-details]')) return false;
+      const t = btnText(b);
+      if (!t || !rootRe.some((re) => re.test(t))) return false;
+      const r = b.getBoundingClientRect();
+      return r.width > 0 && r.left >= mr.left - 8 && r.top >= mr.top - 80 && r.top < mr.top + 200;
+    });
+    for (const rootBtn of cands) {
+      // container = nearest ancestor holding 1+ segment buttons on one line
+      let box = rootBtn.parentElement;
+      for (let i = 0; i < 4 && box; i++, box = box.parentElement) {
+        const nav = box.closest(S.NAV.breadcrumbContainer);
+        if (nav && main.contains(nav) || box.querySelectorAll('[role="button"],button,a[href],[role="link"]').length > 1) break;
+      }
+      if (!box) continue;
+      const rr = rootBtn.getBoundingClientRect();
+      const segs = [...box.querySelectorAll('[role="button"],button,a[href],[role="link"]')]
+        .filter((b) => isBtn(b) && !b.closest(LISTISH) && (b === rootBtn || !b.contains(rootBtn)))
+        .filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && Math.abs(r.top + r.height / 2 - (rr.top + rr.height / 2)) < 14 && r.left >= rr.left - 2; })
+        .filter((b) => btnText(b) && !/^(…|\.\.\.|more|その他)$/i.test(btnText(b)) && !b.querySelector('[role="button"],button'))
+        .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+      // drop non-breadcrumb buttons to the right that are far away (filters, layout toggles)
+      const out = [];
+      let lastRight = rr.left;
+      for (const b of segs) {
+        const r = b.getBoundingClientRect();
+        if (r.left - lastRight > 60) break;
+        lastRight = r.right;
+        const label = btnText(b);
+        const rootKey = out.length ? null : Object.keys(S.NAV.roots).find((k) => S.NAV.roots[k].test(label));
+        out.push({ label, el: b, root: rootKey || null, id: b.getAttribute('data-id') || null });
+      }
+      if (out.length) { S.lastBreadcrumbStrategy = 'root-button'; return out; }
+    }
+    return null;
+  };
+
+  S.findLayoutButton = (re) => {
+    for (const b of document.querySelectorAll('[role="button"],button,[role="radio"],[role="menuitemradio"],[role="tab"]')) {
+      if (S.isOurs(b) || b.closest('[data-id]')) continue;
+      const l = norm(b.getAttribute('aria-label') || b.getAttribute('data-tooltip') || b.textContent);
+      if (re.test(l) && S.isShown(b)) return b;
+    }
+    return null;
+  };
+
+  /* ---------- suggestions (Home / My Drive) ---------- */
+  S.SUGGEST = {
+    headings: /^(suggested|suggested folders|suggested files|suggestions|quick access|recommended|おすすめ|候補|フォルダの候補|ファイルの候補|提案|クイック アクセス|クイックアクセス|おすすめのフォルダ|おすすめのファイル)$/i,
+    /* Gemini / Workspace suggestion chips & panels (buttons/regions by aria-label) */
+    chips: /(gemini|ask gemini|gemini に質問|gemini で|summari[sz]e|要約|help me|作成をサポート|suggestion chips|候補のチップ)/i,
+    /* headings of the normal list that must never be hidden */
+    keep: /^(folders|files|フォルダ|ファイル|name|名前)$/i,
+  };
+  S.headingEls = (root = scopeEl()) => [...root.querySelectorAll('[role="heading"],h1,h2,h3,h4,h5,h6')].filter((h) => !S.isOurs(h) && !h.closest('[data-id]'));
+
+  /* ---------- file kinds (for Fluent icons / open-in-new-tab) ---------- */
+  S.KINDS = [
+    ['folder', /(^|\s)(shared )?folder\b|フォルダ|^folder$/i, null],
+    ['doc', /google docs|google ドキュメント|ドキュメント|microsoft word|\bword\b|document/i, /\.(docx?|odt|rtf)$/i],
+    ['sheet', /google sheets|スプレッドシート|excel|spreadsheet/i, /\.(xlsx?|ods|csv|tsv)$/i],
+    ['slide', /google slides|スライド|powerpoint|presentation/i, /\.(pptx?|odp|key)$/i],
+    ['pdf', /\bpdf\b/i, /\.pdf$/i],
+    ['image', /\bimage\b|画像|\bphoto\b|写真|png|jpeg/i, /\.(png|jpe?g|gif|webp|bmp|heic|svg|tiff?)$/i],
+    ['video', /\bvideo\b|動画/i, /\.(mp4|mov|avi|mkv|webm|m4v)$/i],
+    ['audio', /\baudio\b|音声|オーディオ/i, /\.(mp3|wav|m4a|flac|ogg|aac)$/i],
+    ['zip', /archive|\bzip\b|圧縮/i, /\.(zip|rar|7z|tar|gz|tgz)$/i],
+    ['text', /\btext\b|テキスト/i, /\.(txt|md|log|json|xml|ya?ml|ini)$/i],
+  ];
+  /** {kind, confident} for an item. */
+  S.fileKind = (item, name) => {
+    const nm = norm(name || '');
+    for (const [k, , ext] of S.KINDS) if (ext && ext.test(nm)) return { kind: k, confident: true, via: 'extension' };
+    if (S.isFolder(item)) return { kind: 'folder', confident: true, via: 'label' };
+    const texts = [];
+    const al = norm(item.getAttribute('aria-label'));
+    if (al) texts.push(nm && al.startsWith(nm) ? al.slice(nm.length) : al);
+    item.querySelectorAll('img[alt],[role="img"][aria-label],[data-tooltip]').forEach((n) => {
+      if (n.closest('[data-dxe-ficon]')) return;
+      texts.push(norm(n.getAttribute('alt') || n.getAttribute('aria-label') || n.getAttribute('data-tooltip')));
+    });
+    const blob = texts.join(' | ');
+    for (const [k, re] of S.KINDS) if (re && re.test(blob)) return { kind: k, confident: k !== 'folder', via: 'type-label' };
+    return { kind: 'file', confident: false, via: 'none' };
+  };
+
+  /* ---------- page structure dump: what text may be kept ---------- */
+  S.keepUiText = (t) => {
+    const all = [...Object.values(S.LABELS), ...Object.values(D.labels), D.tabDetails, D.tabActivity, D.closeButton, D.headings,
+      ...Object.values(S.NAV.roots), S.NAV.listLayout, S.NAV.gridLayout, S.SUGGEST.headings, S.SUGGEST.keep, D.toolbarDetails];
+    return all.some((re) => re.test(t)) || D.panelAriaLabels.includes(t);
+  };
+
+  /* ---------- right-side panel heuristic (0.3.0) ---------- */
+  S.listWidth = () => {
+    const g = scopeEl().querySelector('[role="grid"]') || scopeEl();
+    return Math.round(g.getBoundingClientRect().width);
+  };
+  /** A column on the right that looks like the details pane. prevListWidth:
+      list width measured before the user action (null = unknown). */
+  S.findSidePanel = (prevListWidth) => {
+    const vw = innerWidth, vh = innerHeight, c = D.side;
+    const shrank = prevListWidth != null && prevListWidth - S.listWidth() >= c.shrinkPx;
+    const seen = new Set();
+    for (const fx of [0.72, 0.82, 0.92]) {
+      for (const fy of [0.35, 0.55, 0.75]) {
+        for (const el of document.elementsFromPoint(fx * vw, fy * vh)) {
+          let best = null;
+          for (let p = el; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+            if (seen.has(p)) break;
+            const r = p.getBoundingClientRect();
+            if (r.left >= vw * c.minLeft - 1 && r.width >= c.minW && r.width <= c.maxW && r.height >= vh * c.minH) best = p;
+          }
+          if (!best || seen.has(best)) continue;
+          seen.add(best);
+          if (S.isOurs(best) || best.querySelector('[role="main"],[role="grid"] [data-id],[data-dxe-tile]')) continue;
+          // never the Workspace side panel (Calendar/Keep/Tasks/Contacts/Gemini add-ons, iframes)
+          if (best.querySelector('iframe') || D.notPanel.test(norm(best.getAttribute('aria-label')) + ' ' + norm((best.querySelector('[role="heading"],h1,h2') || {}).textContent))) continue;
+          const hasUi = best.querySelector('[role="tab"],[role="heading"],h1,h2,h3') || S.findDetailsClose(best);
+          const al = norm(best.getAttribute('aria-label'));
+          const labelled = al && D.panelAriaLabels.some((x) => al === x || al.startsWith(x));
+          if (hasUi && (shrank || labelled)) {
+            S.lastDetailsStrategy = 'side-heuristic' + (shrank ? '+shrink' : '') + (labelled ? '+aria' : '');
+            return best;
+          }
+        }
+      }
+    }
+    return null;
+  };
+  /** CSS selector list for aria-labelled panels (used by details.js). */
+  S.panelAriaSelector = () => {
+    const labels = D.panelAriaLabels.map((l) => `[aria-label="${l.replace(/"/g, '\\"')}"]`).join(',');
+    return `:is([role="complementary"],[role="region"],aside):is(${labels}):not([role="main"]):not(:has([role="grid"] [data-id])):not(:has([role="main"]))`;
   };
 
   S.uiLang = () => ((document.documentElement.lang || navigator.language || 'en').toLowerCase().startsWith('ja') ? 'ja' : 'en');
