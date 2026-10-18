@@ -1,23 +1,79 @@
 <!doctype html>
-<!-- Local approximation of Google Drive's 2026 grid view DOM (names ABOVE
-     thumbnails, obfuscated classes, role/aria/data-id hooks). Test-only.
-     Query: ?hl=ja|en  &theme=dark|light  &view=grid|list -->
+<!-- Local approximation of Google Drive's 2026 DOM, rebuilt for 0.3.1 from two
+     real "Copy page structure" dumps (My Drive, ja, 1259x1139 and 2504x1397):
+     #drive-main-page > grid of: header role=banner #gb · New button · left
+     nav[data-target=navTree] role=tree · .g3Fmkb column = .S630me header
+     (title/breadcrumb row + role=toolbar row) above .PolqHc > role=main[data-view-type]
+     > c-wiz > role=region[data-has-sections] > [data-display-mode], and the details
+     pane .wbg7nb > .a-Mg-al > role=complementary aria-label="詳細ウィンドウ" (header
+     [aria-label="<name> <type>"] > h2 > [role=button][data-target=open], close
+     [data-target=hideDetails] button aria-label="詳細を閉じる", role=tablist, body
+     .a-ub-sc-oa > .a-ub-oa > 3× .l-Mg-qs-ra, first holding .a-szr7ld-ub whose only
+     child the dump skipped — most likely an <iframe>) · right rail role=complementary
+     aria-label="サイドパネル" · hidden viewer role=dialog aria-hidden=true holding a
+     "文字起こしサイドバー" complementary. File items themselves were below the dump
+     depth, so their inner structure is still our 0.2 guess. Test-only.
+     Query: ?hl=ja|en &theme=dark|light &view=grid|list &crumbs=root|a/b &page=home &sugg=1
+       &autodetails=1 (click opens pane) &nodetails=1 (pane never opens) &nomenudetails=1
+       &dpnotabs=1 (legacy tab-less, label-less pane → side heuristic)
+       &dpframe=same|inline|opaque|cross (pane body: same-origin iframe (default) / plain
+         DOM / unreadable iframe / docs.google.com iframe served by the real-extension test)
+       &dpkeep=1 (closing collapses the wrapper instead of removing the pane)
+       &hdrfixed=1 (header block has a fixed height → toolbar must go before main)
+       &nolay=1 (no list/grid buttons → "v" shortcut) -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>My Drive - Google Drive (mock)</title>
 <style>
-  body { margin: 0; font: 14px/1.4 "Google Sans", Roboto, Arial, "Noto Sans JP", sans-serif; background: #f8fafd; color: #1f1f1f; }
+  body { margin: 0; font: 14px/1.4 "Google Sans", Roboto, Arial, "Noto Sans JP", sans-serif; background: #f8fafd; color: #1f1f1f; overflow: hidden; }
   body.dark { background: #1b1b1b; color: #e3e3e3; }
-  .a1 { display: flex; height: 100vh; }
-  .nav { width: 220px; padding: 16px; box-sizing: border-box; }
-  .nav .b { background: #fff; border-radius: 16px; padding: 14px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.3); width: 90px; }
+  #drive-main-page { position: fixed; inset: 0; }
+  .YkfxEe { display: grid; height: 100%; grid-template-columns: 256px minmax(0, 1fr) 56px; grid-template-rows: 64px 80px minmax(0, 1fr); }
+  .ak25Me { grid-column: 1 / -1; grid-row: 1; }
+  #gb { display: flex; align-items: center; height: 64px; padding: 0 16px; gap: 16px; box-sizing: border-box; }
+  #gb .lg { width: 224px; font-size: 22px; }
+  #gb .sr { flex: 1; max-width: 720px; height: 46px; border-radius: 24px; background: #e9eef6; display: flex; align-items: center; padding: 0 16px; color: #555; }
+  body.dark #gb .sr { background: #282a2c; color: #aaa; }
+  #gb [role=button] { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .ZHllM { grid-column: 1; grid-row: 2; padding: 8px 16px; }
+  .ALpC8b { grid-column: 1; grid-row: 3; overflow: auto; }
+  .nav { padding: 0 16px 0 16px; box-sizing: border-box; }
+  .nav .b { background: #fff; border-radius: 16px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.3); width: 100px; box-sizing: border-box; }
   body.dark .nav .b { background: #37393b; }
-  .nav p { margin: 18px 0; padding-left: 12px; }
-  .mn { flex: 1; background: #fff; border-radius: 16px; margin: 0 16px 16px 0; padding: 12px 20px; overflow: auto; }
-  body.dark .mn { background: #131314; }
+  [role=tree] [role=treeitem] > [role=link] { display: block; height: 32px; line-height: 32px; padding-left: 16px; border-radius: 16px; }
+  [role=treeitem][aria-selected=true] > [role=link] { background: #c2e7ff; }
+  body.dark [role=treeitem][aria-selected=true] > [role=link] { background: #004a77; }
+  .zf { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+  .g3Fmkb { grid-column: 2; grid-row: 2 / 4; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); min-height: 0; padding-bottom: 16px; box-sizing: border-box; }
+  .S630me { grid-column: 1; grid-row: 1; background: #fff; border-radius: 16px 16px 0 0; }
+  body.dark .S630me { background: #131314; }
+  body.hdrfixed .S630me { height: 112px; }
+  .PolqHc { grid-column: 1; grid-row: 2; min-height: 0; background: #fff; border-radius: 0 0 16px 16px; overflow: hidden; }
+  body.dark .PolqHc { background: #131314; }
+  .wbg7nb { grid-column: 2; grid-row: 1 / 3; display: flex; min-height: 0; }
+  .wbg7nb.closed .a-Mg-al { display: none; }
+  .a-Mg-al { display: flex; min-height: 0; }
+  .oLzOxb { grid-column: 3; grid-row: 2 / 4; }
+  .rail { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 8px; }
+  .rail [role=tab] { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; background: #e9eef6; }
+  body.dark .rail [role=tab] { background: #282a2c; }
+  .viewer { position: fixed; left: 0; top: 100%; width: 100%; height: 0; }
+  .viewer .ts { position: fixed; right: 0; top: 0; width: 336px; height: 100vh; visibility: hidden; }
+  .titleRow { height: 64px; display: flex; align-items: center; padding: 0 16px 0 20px; }
+  .tbRow { height: 48px; display: flex; align-items: center; padding: 0 16px; }
+  .chips { display: flex; gap: 8px; }
+  .chips [role=button] { padding: 5px 14px; border: 1px solid #747775; border-radius: 8px; font-size: 13px; }
+  .mn { height: 100%; overflow: auto; padding: 0 20px 12px; box-sizing: border-box; }
+  .dp { width: 320px; margin-left: 16px; background: #fff; border-radius: 16px; box-sizing: border-box; overflow: auto; display: flex; flex-direction: column; }
+  body.dark .dp { background: #131314; }
+  .a-ub-sc-oa, .a-ub-oa, .l-Mg-qs-ra, .a-szr7ld-ub { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .l-Mg-qs-ra:not(:first-child) { display: none; }
+  .a-szr7ld-ub iframe { border: 0; width: 100%; flex: 1; min-height: 600px; background: transparent; }
+  .a-szr7ld-ub > .inl { padding: 0 24px; }
+  body.frame { overflow: auto; padding: 0 24px; }
   .hdr { font-size: 22px; margin: 6px 0 12px; }
-  .bar { height: 40px; display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .bar { height: 40px; display: flex; gap: 6px; align-items: center; flex: 1; }
   .bar [role=button] { padding: 6px 10px; border-radius: 16px; background: #e9eef6; cursor: pointer; font-size: 12px; }
   body.dark .bar [role=button] { background: #2a2b2e; }
   .bar[hidden] { display: none; }
@@ -50,13 +106,11 @@
   .Nmenu [role=menuitem]:hover, .Nmenu [role=menuitem].hl { background: rgba(0,0,0,.08); }
   .Nmenu .k { margin-left: auto; color: #777; font-size: 12px; }
   .Nmenu hr { border: 0; border-top: 1px solid #ddd; margin: 8px 0; }
-  /* details side panel (mock of Drive's right-hand "Details" pane) */
-  .dp { width: 360px; flex: 0 0 360px; background: #fff; border-radius: 16px; margin: 0 16px 16px 0; padding: 12px 16px; box-sizing: border-box; overflow: auto; }
-  body.dark .dp { background: #131314; }
-  .dpH { display: flex; align-items: center; gap: 12px; height: 48px; }
+  /* details side panel */
+  .dpH { display: flex; align-items: center; gap: 12px; height: 64px; padding: 8px 8px 0 24px; box-sizing: border-box; }
   .dpT { flex: 1; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dpX { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-  .dpTabs { display: flex; gap: 24px; border-bottom: 1px solid #ddd; margin: 4px 0 12px; }
+  .dpTabs { display: flex; gap: 24px; border-bottom: 1px solid #ddd; margin: 4px 24px 12px; height: 47px; align-items: flex-end; }
   .dpTabs [role=tab] { padding: 8px 2px; cursor: pointer; }
   .dpTabs [aria-selected=true] { border-bottom: 3px solid #0b57d0; color: #0b57d0; }
   .dpS .h { font-weight: 500; margin: 14px 0 8px; font-size: 15px; }
@@ -65,7 +119,7 @@
   .mbtn { display: inline-block; margin-top: 8px; padding: 6px 14px; border: 1px solid #747775; border-radius: 16px; font-size: 13px; }
   .kv { margin-bottom: 12px; } .kv .l { font-size: 12px; color: #444746; font-weight: 500; } body.dark .kv .l { color: #c4c7c5; }
   .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid #ccc; border-radius: 8px; }
-  .hdrbar { display: flex; align-items: center; }
+  .hdrbar { display: flex; align-items: center; flex: 1; }
   .hdrbar .vd { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font: italic bold 16px serif; }
   .hdrbar .vd:hover { background: rgba(0,0,0,.08); }
   .bc { display: flex; align-items: center; gap: 2px; font-size: 22px; }
@@ -85,20 +139,57 @@
 </style>
 </head>
 <body>
-<div class="a1">
-  <div class="nav"><div class="b" id="newBtn">+ New</div><p id="n1">My Drive</p><p id="n2">Shared with me</p><p id="n3">Starred</p><p id="n4">Trash</p></div>
-  <div class="mn" role="main">
-    <div class="hdrbar"><div class="hdr" id="title">My Drive</div><div class="vd" id="vdBtn" role="button" tabindex="0">i</div>
-      <div class="lay" role="radiogroup"><div role="radio" id="layList" aria-checked="false" tabindex="0">≡</div><div role="radio" id="layGrid" aria-checked="true" tabindex="0">⊞</div></div></div>
-    <div class="bar" id="selbar" hidden></div>
-    <div role="grid" id="grid" aria-multiselectable="true"></div>
+<div id="drive-main-page"><div class="YkfxEe">
+  <div class="ak25Me"><header role="banner" id="gb"><div class="lg">Drive</div><div class="sr" id="srch">Search</div>
+    <a role="button" aria-label="Google apps" tabindex="0">⋮⋮</a><a role="button" id="acct" aria-label="Google Account: Zoe (zoe@example.com)" tabindex="0">Z</a></header></div>
+  <div class="ZHllM"><div class="nav"><button class="b" id="newBtn" role="button" type="button">+ New</button></div></div>
+  <div class="ALpC8b"><div data-target="sidebar"><nav role="navigation" data-target="navTree" class="nav">
+    <div role="heading" aria-level="2" id="navTreeHeader" class="zf">Folders and views</div>
+    <div role="tree" tabindex="0" aria-labelledby="navTreeHeader">
+      <div role="treeitem" id="nt:D" aria-selected="false"><div role="link" data-target="node" id="n0">Home</div></div>
+      <div role="treeitem" id="nt:Driv" aria-selected="true" aria-expanded="false"><div role="link" data-target="node" id="n1">My Drive</div></div>
+      <div role="treeitem" id="nt:Sh" aria-selected="false"><div role="link" data-target="node" id="n2">Shared with me</div></div>
+      <div role="treeitem" id="nt:St" aria-selected="false"><div role="link" data-target="node" id="n3">Starred</div></div>
+      <div role="treeitem" id="nt:Tr" aria-selected="false"><div role="link" data-target="node" id="n4">Trash</div></div>
+    </div></nav></div></div>
+  <div class="g3Fmkb">
+    <div class="S630me"><div class="aQh4x"><div class="a-s-Ba-Ak"><div class="a-s-tb-pa a-s-Ba-Ak-x"><div data-label="" class="a-s-tb-pa"><div class="a-s-tb-sc-Ja">
+      <div class="a-s-tb-sc-Ja-Q a-s-tb-sc-Ja-Q-Nm titleRow">
+        <div class="hdrbar"><div class="hdr" id="title" role="heading" aria-level="1">My Drive</div><div class="vd" id="vdBtn" role="button" tabindex="0" data-tooltip="Details (Alt+→)">i</div>
+          <div class="lay" role="radiogroup"><div role="radio" id="layList" aria-checked="false" tabindex="0">≡</div><div role="radio" id="layGrid" aria-checked="true" tabindex="0">⊞</div></div></div></div>
+      <div class="a-s-tb-sc-Ja-Q a-s-tb-sc-Ja-Q-Nm a-s-Ba-ce tbRow">
+        <div class="chips" id="chips"></div>
+        <div role="toolbar" class="uEnUtd bar" id="selbar" hidden></div></div>
+    </div></div></div></div></div></div>
+    <div class="PolqHc">
+      <div class="mn a-S" role="main" tabindex="-1" data-view-type="1" data-view-id="mydrive"><div class="a-s-tb-pa a-S-x-j"><c-wiz class="PEfnhb" data-view-root=""><div data-region-root="" class="umU85b"><div class="v9czFf">
+        <c-wiz class="pNDVwc"><div role="region" tabindex="-1" data-has-sections="true" class="zyephd" id="region"><div data-display-mode="1" class="LOo9ab" id="dm">
+          <div role="grid" id="grid" aria-multiselectable="true"></div>
+        </div></div></c-wiz></div></div></c-wiz></div></div>
+    </div>
+    <div class="wbg7nb closed" id="dpwrap"><div class="a-Mg-al" id="dphost"></div><div role="navigation" tabindex="0" class="sjLxKd"></div></div>
   </div>
-</div>
+  <div class="oLzOxb"><div role="complementary" aria-label="Side panel" id="rail" class="rail"><div role="tablist" class="rail">
+    <div role="tab" aria-label="Calendar" aria-selected="false">31</div><div role="tab" aria-label="Keep" aria-selected="false">K</div>
+    <div role="tab" aria-label="Tasks" aria-selected="false">✓</div><div role="tab" aria-label="Contacts" aria-selected="false">👤</div></div></div></div>
+</div></div>
+<div class="viewer"><div role="dialog" aria-label="Showing viewer." aria-hidden="true">
+  <div role="complementary" aria-label="Transcript sidebar" class="ts" id="tsbar"><header><h2>Transcript</h2><button aria-label="Close side sheet">✕</button></header>
+    <input type="text" aria-label="Search transcript"><div><div>Speaker</div><div>00:00</div></div></div></div></div>
 <div id="log"></div>
 <script>
 (() => {
   const q = new URLSearchParams(location.search);
   const ja = q.get('hl') === 'ja';
+  if (q.get('hdrfixed')) document.body.classList.add('hdrfixed');
+  if (ja) {
+    rail.setAttribute('aria-label', 'サイドパネル');
+    ['カレンダー', 'Keep', 'ToDo', '連絡先'].forEach((l, i) => rail.querySelectorAll('[role=tab]')[i].setAttribute('aria-label', l));
+    document.querySelector('.viewer [role=dialog]').setAttribute('aria-label', 'ビューアを表示しています。');
+    tsbar.setAttribute('aria-label', '文字起こしサイドバー');
+    acct.setAttribute('aria-label', 'Google アカウント: Zoe (zoe@example.com)');
+    navTreeHeader.textContent = 'フォルダとビュー'; n0.textContent = 'ホーム'; vdBtn.dataset.tooltip = '詳細(Alt+→)';
+  }
   const view = q.get('view') || 'grid';
   document.documentElement.lang = ja ? 'ja' : 'en';
   if (q.get('theme') === 'dark') document.body.classList.add('dark');
@@ -112,6 +203,9 @@
   layGrid.setAttribute('aria-label', ja ? 'グリッド レイアウト' : 'Grid layout');
   layList.setAttribute('aria-checked', String(view === 'list')); layGrid.setAttribute('aria-checked', String(view !== 'list'));
   [layList, layGrid].forEach((b) => b.addEventListener('click', () => window.__actions.push('LAYOUT ' + (b === layList ? 'list' : 'grid'))));
+  if (q.get('nolay')) document.querySelector('.lay').remove();
+  // Drive's keyboard shortcut "v" toggles list/grid
+  document.addEventListener('keydown', (e) => { if (e.key === 'v' && !e.ctrlKey && !e.altKey && !e.metaKey && !(e.target.closest && e.target.closest('input,textarea,[contenteditable]'))) window.__actions.push('LAYOUT-TOGGLE-V'); });
   /* breadcrumbs: ?crumbs=root | ?crumbs=Project files/2026 */
   if (q.get('crumbs')) {
     const segs = [T.my, ...(q.get('crumbs') === 'root' ? [] : q.get('crumbs').split('/'))];
@@ -194,9 +288,10 @@
     };
     const gem = document.createElement('div');
     gem.innerHTML = `<div role="button" class="gem" aria-label="${ja ? 'Gemini に質問' : 'Ask Gemini'}" tabindex="0">✦ ${ja ? 'Gemini に質問' : 'Ask Gemini'}</div>`;
-    main.insertBefore(gem, grid);
-    main.insertBefore(mk(ja ? 'おすすめのフォルダ' : 'Suggested folders', ja ? ['経理', '旅行の写真', 'チーム共有'] : ['Accounting', 'Trip photos', 'Team share']), grid);
-    main.insertBefore(mk(ja ? 'おすすめのファイル' : 'Suggested files', ja ? ['見積書.pdf', '週報.docx'] : ['Quote.pdf', 'Weekly report.docx']), grid);
+    const gp = grid.parentElement;
+    gp.insertBefore(gem, grid);
+    gp.insertBefore(mk(ja ? 'おすすめのフォルダ' : 'Suggested folders', ja ? ['経理', '旅行の写真', 'チーム共有'] : ['Accounting', 'Trip photos', 'Team share']), grid);
+    gp.insertBefore(mk(ja ? 'おすすめのファイル' : 'Suggested files', ja ? ['見積書.pdf', '週報.docx'] : ['Quote.pdf', 'Weekly report.docx']), grid);
   }
   if (view === 'grid') {
     section(T.folders, folders.map((n) => mkCell(n, true)), 4);
@@ -215,7 +310,9 @@
   const BAR = ja ? ['共有', 'ダウンロード', '移動', 'ゴミ箱に移動', 'リンクをコピー'] : ['Share', 'Download', 'Move', 'Move to trash', 'Copy link'];
   selbar.innerHTML = BAR.map((b) => `<div role="button" aria-label="${b}" tabindex="0">${b}</div>`).join('');
   selbar.addEventListener('click', (e) => { const b = e.target.closest('[role=button]'); if (b) log('TOOLBAR ' + b.getAttribute('aria-label')); });
-  const updateBar = () => { selbar.hidden = !items().some((c) => c.getAttribute('aria-selected') === 'true'); };
+  const chips = document.getElementById('chips');
+  chips.innerHTML = (ja ? ['種類', 'ユーザー', '最終更新', 'ソース'] : ['Type', 'People', 'Modified', 'Source']).map((b) => `<div role="button" aria-haspopup="true" tabindex="0">${b} ▾</div>`).join('');
+  const updateBar = () => { selbar.hidden = !items().some((c) => c.getAttribute('aria-selected') === 'true'); chips.hidden = !selbar.hidden; chips.style.display = chips.hidden ? 'none' : ''; };
   const select = (c, additive) => {
     if (!additive) items().forEach((x) => x.setAttribute('aria-selected', 'false'));
     c.setAttribute('aria-selected', additive && c.getAttribute('aria-selected') === 'true' ? 'false' : 'true');
@@ -284,69 +381,142 @@
   document.addEventListener('click', (e) => { const b = e.target.closest('.Mr'); if (b) { const r = b.getBoundingClientRect(); closeMenus(); menus.push(buildMenu(M.top, r.left, r.bottom, 0)); } });
   document.addEventListener('mousedown', (e) => { if (!e.target.closest('.Nmenu')) closeMenus(); }, true);
 
-  /* ---- details side panel (created on open, removed on close, async content) ---- */
+  /* ---- details pane, real 2026 structure (see header comment) ---- */
   const DL = ja ? {
-    title: '詳細', act: 'アクティビティ', close: '閉じる', view: '詳細を表示', hide: '詳細を非表示', who: 'アクセスできるユーザー', priv: '自分のみ',
+    title: '詳細', act: 'アクティビティ', close: '詳細を閉じる', view: '詳細を表示', hide: '詳細を非表示', who: 'アクセスできるユーザー', priv: '自分のみ',
     shared: (n) => n + ' 人と共有', manage: 'アクセスを管理', fd: 'ファイルの詳細', type: '種類', size: 'サイズ', storage: '使用容量', loc: '場所', owner: 'オーナー',
     mod: '最終更新', opened: '自分が最後に開いた日', created: '作成日', dl: 'ダウンロード権限', dlv: '閲覧者はダウンロードできます', labels: 'ラベル', none: 'なし',
-    my: 'マイドライブ', me: '自分', d: (m, dd) => `2026/${m}/${dd}`, by: ' 自分', folderType: 'Google ドライブのフォルダ',
+    my: 'マイドライブ', me: '自分', d: (m, dd) => `2026/${m}/${dd}`, by: ' 自分', folderType: 'Google ドライブ フォルダ', pane: '詳細ウィンドウ',
+    types: { doc: 'Google ドキュメント', sheet: 'Google スプレッドシート', slide: 'Google スライド', img: '画像', pdf: 'PDF', txt: 'テキスト' },
   } : {
-    title: 'Details', act: 'Activity', close: 'Close', view: 'View details', hide: 'Hide details', who: 'Who has access', priv: 'Private to you',
+    title: 'Details', act: 'Activity', close: 'Close details', view: 'View details', hide: 'Hide details', who: 'Who has access', priv: 'Private to you',
     shared: (n) => 'Shared with ' + n + ' people', manage: 'Manage access', fd: 'File details', type: 'Type', size: 'Size', storage: 'Storage used', loc: 'Location', owner: 'Owner',
     mod: 'Modified', opened: 'Opened', created: 'Created', dl: 'Download permissions', dlv: 'Viewers can download', labels: 'Labels', none: 'None',
-    my: 'My Drive', me: 'me', d: (m, dd) => `${['', '', '', '', '', '', '', '', '', 'Sep', 'Oct'][m]} ${dd}, 2026`, by: ' by me', folderType: 'Google Drive Folder',
+    my: 'My Drive', me: 'me', d: (m, dd) => `${['', '', '', '', '', '', '', '', '', 'Sep', 'Oct'][m]} ${dd}, 2026`, by: ' by me', folderType: 'Google Drive Folder', pane: 'Details window',
+    types: TYPE,
   };
+  const SZ = ['18 KB', '3.2 MB', '9 KB', '12.4 MB', '2.1 MB', '845 KB', '4.7 MB', '1 KB', '3.9 MB', '22 KB'];
+  const kv = (l, v) => `<div class="kv"><div class="l">${l}</div><div class="v">${v}</div></div>`;
+  const bodyHtml = (i, kind) => {
+    const folder = kind === 'folder', shared = i % 3 === 0;
+    return `<div class="dpS"><div class="h">${DL.who}</div><div class="acc"><img alt="${DL.me}" src="${typeIcon('#8e24aa', 'Z')}">` +
+      (shared ? `<img alt="Aiko" src="${typeIcon('#039be5', 'A')}"><img alt="Ben" src="${typeIcon('#43a047', 'B')}"><span>${DL.shared(2)}</span>` : `<span>${DL.priv}</span>`) +
+      `</div><div role="button" class="mbtn" tabindex="0">${DL.manage}</div></div>` +
+      `<div class="dpS"><div class="h">${DL.fd}</div>` +
+      kv(DL.type, folder ? DL.folderType : DL.types[kind]) +
+      (folder ? '' : kv(DL.size, SZ[i % SZ.length]) + kv(DL.storage, SZ[i % SZ.length])) +
+      kv(DL.loc, `<div role="button" class="chip" tabindex="0">${folderSvg('#5f6368')}${DL.my}</div>`) +
+      kv(DL.owner, DL.me) + kv(DL.mod, DL.d(10, 12) + DL.by) + kv(DL.opened, DL.d(10, 15) + DL.by) + kv(DL.created, DL.d(9, 30)) +
+      (folder ? '' : kv(DL.dl, DL.dlv)) + kv(DL.labels, DL.none) + '</div>';
+  };
+  const FRAME_CSS = `body{margin:0;padding:0 24px;font:14px/1.4 Roboto,Arial,"Noto Sans JP",sans-serif;color:${document.body.classList.contains('dark') ? '#e3e3e3' : '#1f1f1f'}}` +
+    '.dpS .h{font-weight:500;margin:14px 0 8px;font-size:15px}.acc{display:flex;align-items:center;gap:6px}.acc img{width:28px;height:28px;border-radius:50%}' +
+    '.mbtn{display:inline-block;margin-top:8px;padding:6px 14px;border:1px solid #747775;border-radius:16px;font-size:13px}.kv{margin-bottom:12px}.kv .l{font-size:12px;color:#888;font-weight:500}' +
+    '.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border:1px solid #ccc;border-radius:8px}';
+  // ?frame=details&i=..&k=..  → this document IS the pane body (cross-origin frame in the real-extension test)
+  if (q.get('frame') === 'details') {
+    document.body.innerHTML = '';
+    document.body.className = 'frame';
+    const st = document.createElement('style'); st.textContent = FRAME_CSS; document.head.appendChild(st);
+    document.body.innerHTML = q.get('k') ? bodyHtml(+q.get('i'), q.get('k')) : '';
+    return;
+  }
+
   const vd = document.getElementById('vdBtn');
   vd.setAttribute('aria-label', DL.view);
-  const SZ = ['18 KB', '3.2 MB', '9 KB', '12.4 MB', '2.1 MB', '845 KB', '4.7 MB', '1 KB', '3.9 MB', '22 KB'];
-  let dp = null;
+  const dpwrap = document.getElementById('dpwrap'), dphost = document.getElementById('dphost');
+  const frameMode = q.get('dpframe') || 'same';
+  let dp = null, open = false, fillTimer = 0;
+  function build() {
+    dp = document.createElement('div');
+    dp.className = 'dp a-ub-j a-ub-j-hc Ub-Qs0SX a-ub-pb';
+    dp.setAttribute('jsaction', 'xEXFB:h0Wcbf;');
+    if (q.get('dpnotabs')) {
+      // legacy: no role, no label, no hooks → only the geometry heuristic can find it
+      dp.innerHTML = `<div class="dpH"><div class="Ic">${folderSvg('#5f6368')}</div><div class="dpT" role="heading" aria-level="2"></div>` +
+        `<div class="dpX" role="button" aria-label="${ja ? '閉じる' : 'Close'}" tabindex="0">✕</div></div><div class="dpB inl"></div>`;
+      dp.querySelector('.dpX').addEventListener('click', closeDetails);
+      return;
+    }
+    dp.setAttribute('role', 'complementary');
+    dp.setAttribute('aria-label', DL.pane);
+    dp.innerHTML = `<div class="a-s-tb-pa"><div data-label="" class="a-s-tb-pa"><div class="a-s-tb-pa"><div data-label="" class="a-s-tb-pa"><div class="a-ub-Gd">` +
+      `<div class="a-ub-D"><div class="a-ub-V-Ok-va dpH"><div class="a-ub-V-j" style="flex:1;min-width:0"><div class="a-Mg"><div class="a-Mg-V" id="dpHdr" aria-label="">` +
+        `<h2 class="a-Mg-lp" style="margin:0;font-size:16px;font-weight:400"><div role="button" tabindex="0" data-target="open" class="a-Mg-V-j dpT" style="display:flex;gap:10px;align-items:center"><span class="Ic">${folderSvg('#5f6368')}</span><span class="nm"></span></div></h2>` +
+        `</div><div class="a-Mg-NDu73b"></div></div></div>` +
+        `<div data-target="hideDetails"><span data-is-tooltip-wrapper=""><button class="dpX" aria-label="${DL.close}" style="border:0;background:transparent;color:inherit;font-size:16px">✕</button>` +
+        `<div role="tooltip" aria-hidden="true" style="position:fixed;left:-9000px">${DL.close}</div></span></div></div>` +
+      `<div class="a-ub-ra-B"><div><div role="tablist" data-use-automatic-activation="" class="LXTxRc-ra-B dpTabs"><div role="tab" aria-selected="true" tabindex="0">${DL.title}</div><div role="tab" aria-selected="false" tabindex="-1">${DL.act}</div></div></div></div></div>` +
+      `<div class="a-ub-sc-oa"><div class="a-ub-oa"><div class="l-Mg-qs-ra"><div class="a-szr7ld-ub" id="dpBodyHost"></div></div><div class="l-Mg-qs-ra"></div><div class="l-Mg-qs-ra"></div></div></div>` +
+      `</div></div></div></div></div>`;
+    dp.querySelector('[data-target=hideDetails] button').addEventListener('click', closeDetails);
+    dp.querySelectorAll('[role=tab]').forEach((t) => t.addEventListener('click', () => { dp.querySelectorAll('[role=tab]').forEach((x) => x.setAttribute('aria-selected', String(x === t))); fillDetails(); }));
+    const host = dp.querySelector('#dpBodyHost');
+    if (frameMode === 'inline') { const d = document.createElement('div'); d.className = 'inl dpB'; host.appendChild(d); }
+    else {
+      const f = document.createElement('iframe');
+      f.title = ''; f.setAttribute('frameborder', '0');
+      if (frameMode === 'opaque') f.setAttribute('sandbox', '');
+      host.appendChild(f);
+      if (frameMode === 'same') f.srcdoc = `<!doctype html><html><head><style>${FRAME_CSS}</style></head><body></body></html>`;
+      if (frameMode === 'opaque') f.srcdoc = '<!doctype html><body></body>';
+    }
+  }
+  const selItem = () => items().find((x) => x.getAttribute('aria-selected') === 'true');
   function fillDetails() {
-    if (!dp) return;
-    const c = items().find((x) => x.getAttribute('aria-selected') === 'true');
-    const body = dp.querySelector('.dpB');
-    dp.querySelector('.dpT').textContent = c ? c.dataset.mName : DL.my;
-    body.innerHTML = '<div class="ld">…</div>';
-    if (!c) return;
-    const i = +c.dataset.mI, folder = c.dataset.mKind === 'folder';
-    setTimeout(() => {
-      if (!dp) return;
-      const shared = i % 3 === 0;
-      const kv = (l, v) => `<div class="kv"><div class="l">${l}</div><div class="v">${v}</div></div>`;
-      body.innerHTML =
-        `<div class="dpS"><div class="h">${DL.who}</div><div class="acc"><img alt="${DL.me}" src="${typeIcon('#8e24aa', 'Z')}">` +
-        (shared ? `<img alt="Aiko" src="${typeIcon('#039be5', 'A')}"><img alt="Ben" src="${typeIcon('#43a047', 'B')}"><span>${DL.shared(2)}</span>` : `<span>${DL.priv}</span>`) +
-        `</div><div role="button" class="mbtn" tabindex="0">${DL.manage}</div></div>` +
-        `<div class="dpS"><div class="h">${DL.fd}</div>` +
-        kv(DL.type, folder ? DL.folderType : TYPE[c.dataset.mKind]) +
-        (folder ? '' : kv(DL.size, SZ[i % SZ.length]) + kv(DL.storage, SZ[i % SZ.length])) +
-        kv(DL.loc, `<div role="button" class="chip" tabindex="0">${folderSvg('#5f6368')}${DL.my}</div>`) +
-        kv(DL.owner, DL.me) + kv(DL.mod, DL.d(10, 12) + DL.by) + kv(DL.opened, DL.d(10, 15) + DL.by) + kv(DL.created, DL.d(9, 30)) +
-        (folder ? '' : kv(DL.dl, DL.dlv)) + kv(DL.labels, DL.none) + '</div>';
-    }, 350);
+    if (!dp || !open) return;
+    const c = selItem();
+    const nm = c ? c.dataset.mName : DL.my;
+    const kind = c ? c.dataset.mKind : 'folder';
+    const typeL = kind === 'folder' ? DL.folderType : DL.types[kind];
+    const hdr = dp.querySelector('#dpHdr');
+    if (hdr) hdr.setAttribute('aria-label', nm + ' ' + typeL);
+    (dp.querySelector('.dpT .nm') || dp.querySelector('.dpT')).textContent = nm;
+    const actTab = dp.querySelector('[role=tab][aria-selected=true]');
+    const activity = actTab && actTab !== dp.querySelector('[role=tab]');
+    const html = !c ? '' : activity ? `<div class="dpS"><div class="h">${DL.act}</div><div>…</div></div>` : bodyHtml(+c.dataset.mI, kind);
+    const f = dp.querySelector('iframe');
+    const setBody = (h) => {
+      if (!f) { const b = dp.querySelector('.dpB'); if (b) b.innerHTML = h; return; }
+      if (frameMode === 'same') { const d = f.contentDocument; if (d && d.body) d.body.innerHTML = h; }
+      else if (frameMode === 'cross') f.src = q.get('crossbase') + '?' + new URLSearchParams({ frame: 'details', hl: ja ? 'ja' : 'en', theme: q.get('theme') || '', i: c ? c.dataset.mI : '', k: c && !activity ? kind : '' });
+      // opaque: nothing readable from outside
+    };
+    clearTimeout(fillTimer);
+    setBody('<div class="ld">…</div>');
+    if (c) fillTimer = setTimeout(() => setBody(html), 350);
   }
   function openDetails() {
     if (q.get('nodetails')) return;
-    if (dp) { fillDetails(); return; }
-    dp = document.createElement('div');
-    dp.className = 'dp';
-    dp.innerHTML = `<div class="dpH"><div class="Ic">${folderSvg('#5f6368')}</div><div class="dpT" role="heading" aria-level="2"></div>` +
-      `<div class="dpX" role="button" aria-label="${DL.close}" tabindex="0">✕</div></div>` +
-      (q.get('dpnotabs') ? '' : `<div class="dpTabs" role="tablist"><div role="tab" aria-selected="true">${DL.title}</div><div role="tab" aria-selected="false">${DL.act}</div></div>`) +
-      `<div class="dpB" role="tabpanel"></div>`;
-    dp.querySelector('.dpX').addEventListener('click', closeDetails);
-    document.querySelector('.a1').appendChild(dp);
+    if (open) { fillDetails(); return; }
+    if (!dp) build();
+    if (!dp.isConnected) dphost.appendChild(dp);
+    dpwrap.classList.remove('closed');
+    open = true;
     vd.setAttribute('aria-label', DL.hide);
     log('DETAILS-OPEN');
+    if (frameMode === 'same' && dp.querySelector('iframe') && !(dp.querySelector('iframe').contentDocument || {}).body) setTimeout(fillDetails, 30);
     fillDetails();
   }
-  function closeDetails() { if (!dp) return; dp.remove(); dp = null; vd.setAttribute('aria-label', DL.view); log('DETAILS-CLOSE'); }
-  window.__details = { open: openDetails, close: closeDetails, isOpen: () => !!dp };
-  vd.addEventListener('click', () => (dp ? closeDetails() : openDetails()));
+  function closeDetails() {
+    if (!open) return;
+    open = false;
+    if (q.get('dpkeep')) dpwrap.classList.add('closed');
+    else { dp.remove(); dp = null; dpwrap.classList.add('closed'); }
+    vd.setAttribute('aria-label', DL.view); log('DETAILS-CLOSE');
+  }
+  window.__details = { open: openDetails, close: closeDetails, isOpen: () => open };
+  vd.addEventListener('click', () => (open ? closeDetails() : openDetails()));
+  // Drive's shortcut: Alt+→ toggles the details pane
+  document.addEventListener('keydown', (e) => { if (e.altKey && e.key === 'ArrowRight') { log('KEY-ALT-RIGHT'); open ? closeDetails() : openDetails(); } });
   // Drive-like: pane follows the selection; with ?autodetails=1 a click opens it
   document.addEventListener('click', (e) => {
     if (!e.target.closest('[data-id]')) return;
-    if (dp) fillDetails(); else if (q.get('autodetails')) openDetails();
+    if (open) fillDetails(); else if (q.get('autodetails')) openDetails();
   });
+  // selection changes by keyboard / synthetic selection also refresh the pane
+  new MutationObserver(() => { if (open) { const c = selItem(); const key = c ? c.dataset.id : ''; if (key !== window.__dpKey) { window.__dpKey = key; fillDetails(); } } })
+    .observe(document.getElementById('grid'), { attributes: true, subtree: true, attributeFilter: ['aria-selected'] });
 })();
 </script>
 </body>

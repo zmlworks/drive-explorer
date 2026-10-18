@@ -1,4 +1,4 @@
-# Drive Explorer (Win11 style) — v0.3.0 (prototype)
+# Drive Explorer (Win11 style) — v0.3.1 (prototype)
 
 Google ドライブを Windows 11 のエクスプローラー風にする Chrome 拡張機能（Manifest V3）です。
 A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 File Explorer.
@@ -28,9 +28,11 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 13. **マイドライブから開始**（0.3.0）— インストールしたドライブのアプリ ウィンドウ（`display-mode: standalone` / `window-controls-overlay` / `minimal-ui`）でホームを開いたとき、1 回だけ `drive/u/N/my-drive` に移動します（既定でオン）。通常のタブ用のオプションもあります（既定でオフ）。
 14. **キーボード**（0.3.0）— **Ctrl+C** で選択項目のリンクをコピー（オプション、既定でオン。文字を選択中や入力中は通常のコピー）、**Enter** で開く、**F2** で名前の変更、**Alt+Enter** でプロパティ、**Delete** はドライブ標準のゴミ箱移動、**Ctrl+A** はドライブ標準の全選択のままです。
 15. **ページ構造をコピー**（0.3.0）— ポップアップのボタンで、現在のドライブ ページの DOM の骨格（タグ・role・aria-* 属性名・UI の aria-label・data-* 属性名・クラス名・位置とサイズ・子要素数、深さ 12・約 200KB まで）をコピーします。ファイル名・フォルダ名・ID・メールアドレスは除去し、文字は本拡張のラベル表にある UI の文言（タブ・ボタン・メニュー・見出し）だけを残します。右側パネルが開いていればその骨格を先頭に出力します。
+16. **実際のドライブの構造に合わせた調整**（0.3.1）— ユーザーから頂いた 2 つの「ページ構造」をもとに：詳細パネルは `role=complementary aria-label="詳細ウィンドウ"`（閉じるボタン `data-target=hideDetails`）で検出、パネル本体が iframe の中にある場合も読み取り（同一オリジンは直接、drive/docs.google.com の別オリジンは全フレームで動く小さな補助スクリプトが `postMessage` で返答）、読み取れない場合はパネル見出しから名前と種類だけを表示。パンくずはファイル一覧の**上**にあるヘッダー（タイトル行＋`role=toolbar` 行）から検出。ツールバーはそのヘッダーの末尾に入れ、一覧の下端が画面外に押し出されないようにしました。選択時のボタンは `role=toolbar` 内のものを優先。表示切り替えボタンが見つからない場合はドライブのショートカット **v** を使います。
+17. **ページ構造の記録の改善**（0.3.1）— 詳細パネル（**ラベルの文字は残し、値は除去**）、一覧の上のヘッダー、`role=main` から最初の項目までの経路と最初の数項目、開いているメニュー、本拡張が裏で開いたドライブのメニューの記録、検出結果の要約を、深さ 25〜40 で先頭に出力します。iframe（ホスト名・パスと同一オリジンかどうか）も出力し、同一オリジンなら中身も辿ります。メニューやパネルを開いたままで記録できるよう、**Ctrl+Alt+Shift+S** またはポップアップの「5 秒後に記録」で保存し、「最後の記録をコピー」でコピーします。
 
 ### インストール（パッケージ化されていない拡張機能として読み込む）
-1. `drive-explorer-0.3.0.zip` を任意のフォルダに展開します（中に `manifest.json` があるフォルダ）。
+1. `drive-explorer-0.3.1.zip` を任意のフォルダに展開します（中に `manifest.json` があるフォルダ）。
 2. Chrome で `chrome://extensions` を開きます。
 3. 右上の **デベロッパー モード** をオンにします。
 4. **「パッケージ化されていない拡張機能を読み込む」** をクリックし、展開したフォルダ（`manifest.json` があるフォルダ）を選択します。
@@ -53,19 +55,21 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 - プロパティの日付などの書式はドライブの表示そのままです（Windows のような「サイズ（バイト数）」は出ません）。名前欄は読み取り専用です（名前の変更は F2）。複数選択時のプロパティには未対応です。
 - ドライブ本体が暗くならない場合：本拡張はドライブ自体を暗くしません。ドライブの歯車 → 設定 → 全般 → デザイン（外観）で「ダーク」を選んでください（この設定がまだ提供されていないアカウントもあります）。
 - ダークモード（エディタ）：Chromium 版のドキュメントでは画像も `<canvas>` に描画されるため、**文書内の画像は反転したまま**になります（DocsAfterDark など他のフィルタ方式と同じ制限）。ツールバーなど UI 全体も反転し、背景は純黒になります。表示のちらつきを防ぐため、docs.google.com の localStorage に小さなフラグ（`dxe-dark-docs` など）を保存します。
-- **0.3.0 の新機能はすべて模擬ページでのみ確認済み**で、実際のドライブではヒューリスティックです：パンくずリストの検出（マイドライブ等のボタンから同じ行のボタンを並べる）、ドライブのレイアウト切り替えボタンのラベル、「おすすめ」の見出し、Gemini チップの aria-label、右側パネルの位置と幅、ファイル種類の判定（aria-label・アイコン・拡張子）。
+- **0.3.1 で実際のドライブの構造（2 つのダンプ）に合わせたのは、詳細パネル・ヘッダー（パンくず/ツールバーの位置）・右側のサイドパネル/文字起こしの除外です。** 詳細パネル本体の中身（iframe かどうか、ラベルの文字）、ファイル項目の内部構造、パンくずのボタンの種類、表示切り替えボタンのラベル、ドライブのメニュー項目、「おすすめ」の見出しはダンプに含まれておらず、まだ推測です。パネル本体が drive/docs.google.com 以外のオリジンの iframe の場合は読み取れず、名前と種類だけになります（権限を増やさない方針のため）。
+- **0.3.0 の新機能は模擬ページでのみ確認済み**で、実際のドライブではヒューリスティックです：パンくずリストの検出（マイドライブ等のボタンから同じ行のボタンを並べる）、ドライブのレイアウト切り替えボタンのラベル、「おすすめ」の見出し、Gemini チップの aria-label、右側パネルの位置と幅、ファイル種類の判定（aria-label・アイコン・拡張子）。
 - アドレス バー：パンくずが見つからない場合は、このセッションで開いたフォルダの記録 → ページタイトルの順で表示します（共有アイテムなどでは `…/フォルダ` になることがあります）。↑ で親が分からない場合はマイドライブへ移動します。
 - 「新しいタブで開く」はダブルクリックの 2 回目の mousedown/click を止めてドライブ自身が開かないようにしています。ファイルかどうか確信が持てない項目（種類が判定できないもの）はドライブ標準の動作のままです。ショートカット（フォルダへのショートカット）はファイル扱いになる場合があります。
 - ごみ箱へのドロップ：ドライブは独自のマウス操作でドラッグを実装しているため、マウスを離した位置が ごみ箱 の上かで判定し、ドロップした項目（選択中ならその選択全体）にドライブの「ゴミ箱に移動」を実行します。カウンターは概算です（他の端末での削除・完全削除・復元は、ゴミ箱ページを開くまで反映されません）。
 - Ctrl+C をリンクのコピーにすると、ドライブ標準の「Ctrl+C / Ctrl+V で項目をコピー」は使えなくなります（ポップアップでオフにできます）。
 - **範囲選択（ラバーバンド選択）は未実装**です。ドライブ自身の範囲選択（空白部分からのドラッグ）が使える場所ではそのまま使えます。
-- ステータス バーとツールバーは一覧の上下に重ねて表示します。ドライブの構造によっては一覧の最下行の一部に重なることがあります。
+- ステータス バーは一覧の下に重ねて表示します。ドライブの構造によっては一覧の最下行の一部に重なることがあります。ツールバーは一覧の上のヘッダーに入れます（入らない場合は一覧の直前に入れて一覧の高さを調整します）。
 - ルートへの移動はセッションごとに 1 回だけ（`sessionStorage`）です。アプリ ウィンドウの判定は `display-mode` メディア クエリによります。
 
 ### 不具合の報告
 1. ポップアップで **「デバッグ：セレクタの一致状況をコンソールに出力」** をオンにし、ドライブのタブを開いたまま DevTools（F12）→ Console の `[DriveExplorer]` ログを確認します。
 2. ポップアップの **「現在のドライブタブの診断情報をコピー」** で、ファイル名や ID を含まない構造情報（JSON）がクリップボードにコピーされます。これを報告に貼り付けてください。
 3. 詳細パネルが隠れない・プロパティが読めない・アドレス バーが違うなどの場合は、該当の状態（例：ファイルを選択して詳細パネルが開いた状態）で **「ページ構造をコピー」** を押し、その内容も貼り付けてください。
+4. メニューやパネルを開いたままの状態が必要な場合は、その状態で **Ctrl+Alt+Shift+S**（またはポップアップの「5 秒後に記録」→ 5 秒以内にメニューを開く）→ ポップアップの **「最後の記録をコピー」**。
 
 ---
 
@@ -89,9 +93,11 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 13. **Start in My Drive** (0.3.0) — in an installed Drive app window (`display-mode` standalone / window-controls-overlay / minimal-ui), landing on Home redirects once per session to `drive/u/N/my-drive` (default on); optional for normal tabs (default off).
 14. **Keyboard** (0.3.0) — **Ctrl+C** copies the selected items' link (option, default on; normal copy while text is selected or you're typing), **Enter** opens, **F2** renames, **Alt+Enter** = Properties. **Delete** (Drive's own move to trash) and **Ctrl+A** (Drive's select all) are left native.
 15. **Copy page structure** (0.3.0) — popup button that copies a sanitized DOM skeleton of the current Drive page: tags, roles, aria-* names, aria-labels of UI chrome, data-* names, class names, rects and child counts, depth ≤ 12, ≤ ~200 KB. File/folder names, IDs and e-mail addresses are removed; text is kept only for known UI labels (tabs, buttons, menu items, headings). The right-hand panel, if open, is dumped first.
+16. **Matched to the real Drive DOM** (0.3.1) — based on two real "page structure" dumps: the details pane is found by `role=complementary aria-label="詳細ウィンドウ"/"Details window"` plus its close hook `data-target=hideDetails`; its body is also read when it sits in an iframe (same-origin directly; a cross-origin drive/docs.google.com frame answers through a tiny all-frames helper via `postMessage`), and if it can't be read, Properties still shows name + type from the pane header (with a note). Breadcrumbs are found in the header block **above** the list (title row + `role=toolbar` row). The Explorer toolbar is inserted at the end of that header so the list's bottom isn't pushed off-screen. Selection-toolbar buttons inside `role=toolbar` are preferred. If no list/grid button is found, the view switch uses Drive's **v** shortcut.
+17. **Better page-structure capture** (0.3.1) — focused sections first, 25–40 levels deep: the details pane (**label texts kept, values stripped**), the header above the list, the path from `role=main` to the first item plus the first items, open menus, the native menus Drive Explorer opened invisibly, and a detection summary. Iframes are listed (host/path, same-origin or not) and same-origin ones are walked. To capture while a menu or the pane is open, press **Ctrl+Alt+Shift+S** or use the popup's **Capture in 5 s**, then **Copy last capture**.
 
 ### Install (Load unpacked)
-1. Unzip `drive-explorer-0.3.0.zip` somewhere (you need the folder that contains `manifest.json`).
+1. Unzip `drive-explorer-0.3.1.zip` somewhere (you need the folder that contains `manifest.json`).
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** (top right).
 4. Click **Load unpacked** and select the unzipped folder (the one containing `manifest.json`).
@@ -114,19 +120,21 @@ Only `storage` (settings in `chrome.storage.sync`, the bin counter in `chrome.st
 - Property values are shown exactly as Drive formats them (no byte counts like Windows). The name field is read-only (use F2 to rename). Properties for multiple selected items isn't supported.
 - If Drive itself doesn't turn dark: this extension doesn't darken Drive. Use Drive's gear → Settings → General → Appearance → Dark (some accounts may not have this setting yet).
 - Editor dark mode: in Chromium, Docs paints document **images into the canvas, so they stay inverted** (same limitation as DocsAfterDark's invert mode). The whole UI including toolbars is inverted and the page background becomes pure black. To avoid a white flash, a tiny flag (`dxe-dark-docs`, …) is cached in docs.google.com's localStorage.
-- **All 0.3.0 features were verified against the mock only**; on the live Drive these parts are heuristic: breadcrumb detection (a root button such as My Drive plus same-line buttons), Drive's layout toggle labels, suggestion headings, Gemini chip aria-labels, right-pane geometry, and file-type detection (aria-label, icon, extension).
+- **0.3.1 matched the details pane, the header (breadcrumb/toolbar placement) and the exclusion of the right rail / transcript sidebar to the real DOM (two dumps).** Still guessed, because the dumps didn't contain them: the pane body's content (iframe or not, label texts), file items' inner structure, the breadcrumb element type, the list/grid button labels, Drive's native menu labels and the suggestion headings. If the pane body is an iframe from an origin other than drive/docs.google.com it can't be read (we don't add permissions), and Properties shows name + type only.
+- **The 0.3.0 features were verified against the mock only**; on the live Drive these parts are heuristic: breadcrumb detection (a root button such as My Drive plus same-line buttons), Drive's layout toggle labels, suggestion headings, Gemini chip aria-labels, right-pane geometry, and file-type detection (aria-label, icon, extension).
 - Address bar: when no breadcrumbs are found it falls back to folders learned in this session, then the page title (e.g. `…/folder` under Shared with me). If the parent is unknown, ↑ goes to My Drive.
 - Open in new tab swallows the second mousedown/click of a double-click so Drive doesn't also open the file in place. Items whose type can't be determined confidently keep Drive's default behaviour. Shortcuts to folders may be treated as files.
 - Drop on the bin: Drive implements dragging with its own mouse handling, so the drop is detected by where the mouse is released; Drive's "Move to trash" then runs for the dragged item (or the whole selection if it was selected). The counter is approximate: deletions on other devices, permanent deletes and restores show up only after you open Trash.
 - With Ctrl+C = copy link, Drive's own Ctrl+C / Ctrl+V item copy is unavailable (turn it off in the popup).
 - **Rubber-band selection is not implemented**; Drive's own drag-select (where Drive offers it) still works.
-- The toolbar and status bar are overlaid on Drive's layout and may cover part of the last row in some layouts.
+- The status bar is overlaid at the bottom and may cover part of the last row in some layouts. The toolbar goes into the header above the list (or, if that header has a fixed height, right before the list with the list's height reduced to fit).
 - The root redirect happens once per browser session (`sessionStorage`); the app-window check uses the `display-mode` media query.
 
 ### Reporting issues
 1. In the popup turn on **Debug: log selector matches to the console**, then check `[DriveExplorer]` lines in DevTools (F12) → Console on the Drive tab.
 2. Click **Copy diagnostics from current Drive tab** in the popup: a JSON with the DOM *structure* only (no file names, no ids) is copied to the clipboard — paste it into your report.
 3. If the details pane isn't hidden, Properties can't read, or the address bar is wrong: reproduce the state (e.g. select a file so the pane opens), click **Copy page structure** and paste that text too.
+4. For states that need a menu or the pane open: press **Ctrl+Alt+Shift+S** in that state (or popup **Capture in 5 s**, then open the menu within 5 s), then popup **Copy last capture**.
 
 ---
 
@@ -142,7 +150,9 @@ src/drive/tiles.js         Medium icons: tags Drive's grid with data-dxe-* (Muta
 src/drive/drive.css        Medium icons styles (scoped to html.dxe-medium)
 src/drive/native-actions.js drives Drive's real menu / toolbar / shortcuts
 src/drive/context-menu.js  Win11 menu UI (shadow DOM)
-src/drive/details.js       details side pane: detect/suppress, invisible open + scrape
+src/drive/scrape-core.js   label/value scraping shared by details.js and frame-scrape.js
+src/drive/frame-scrape.js  all_frames helper: answers scrape requests for a pane body in an iframe
+src/drive/details.js       details side pane: detect/suppress, invisible open + scrape (pane + iframes)
 src/drive/properties.js    Win11 Properties dialog (shadow DOM)
 src/drive/root-redirect.js document_start: Home → My Drive once (app window / optional tabs)
 src/drive/fluent-icons.js  Fluent-style SVG icons (folder, doc, sheet, …, bin)
@@ -163,6 +173,7 @@ scripts/build-zip.sh       builds ../out/drive-explorer-<ver>.zip
 Tests (need Chrome + playwright-core): `node test/run-screenshots.mjs <outDir>` (scripts injected into the mocks) and `node test/run-real-extension.mjs <outDir>` (the real unpacked extension, with drive/docs.google.com answered locally by the mocks).
 
 ## Changelog
+- **0.3.1** — Matched to the real Drive DOM from two user dumps: details pane via `aria-label="詳細ウィンドウ"` + `data-target=hideDetails`, pane open-state measured through our hiding CSS, header name/type, iframe-aware scraping (+ all-frames helper), partial Properties instead of failure; breadcrumbs from the header above `role=main`; toolbar placed in that header (main height compensation fallback); `role=toolbar` buttons preferred; `v` view-switch fallback; side rail / transcript sidebar / hidden viewer excluded. Page structure: focused deep sections, pane label texts, iframes, native-menu snapshots, summary, Ctrl+Alt+Shift+S and delayed capture. Mock rebuilt to the real structure.
 - **0.3.0** — "Copy page structure"; aria-label + right-column heuristics for hiding the details pane; Explorer toolbar with /path address bar, Alt+↑/Backspace; status bar; Fluent file icons; hide suggestions; open files in new tab/window (service worker); Recycle Bin tile; start in My Drive (app window); Ctrl+C copies link.
 - **0.2.0** — Hide Drive's details side panel (toggle, default on); Properties dialog (context menu + Alt+Enter) fed by Drive's details pane; details info in diagnostics.
 - **0.1.0** — Medium icons view, Win11 context menu, editor dark mode.

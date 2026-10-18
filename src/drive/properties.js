@@ -12,6 +12,7 @@
       loading: 'Reading details from Google Drive…',
       failed: 'Couldn’t read the details from Google Drive.', failedHint: 'To see them in Drive: turn off “Hide Drive’s details side panel” in the extension popup, then use “Show Drive menu” → File information → Details. To help fix this: popup → “Copy page structure” (with the details pane open) and send it.',
       none: 'No fields were found.', property: 'Property', value: 'Value', id: 'ID',
+      partial: 'Only part of the information could be read from Drive’s details pane. Please send “Copy page structure” (popup) taken while a file is selected so this can be completed.',
       f: { type: 'Type', location: 'Location', size: 'Size', storage: 'Storage used', owner: 'Owner', modified: 'Modified',
         opened: 'Opened', created: 'Created', access: 'Access', download: 'Download permissions', description: 'Description', shared: 'Shared' },
     },
@@ -20,6 +21,7 @@
       loading: 'Google ドライブから情報を取得しています…',
       failed: 'Google ドライブから情報を取得できませんでした。', failedHint: 'ドライブ上で確認するには、拡張機能のポップアップで「ドライブの詳細パネルを表示しない」をオフにしてから「ドライブのメニューを表示」→ ファイル情報 → 詳細 を開いてください。改善のため、詳細パネルを開いた状態でポップアップの「ページ構造をコピー」を送ってください。',
       none: '項目が見つかりませんでした。', property: 'プロパティ', value: '値', id: 'ID',
+      partial: 'ドライブの詳細パネルから一部の情報しか読み取れませんでした。改善のため、ファイルを選択した状態でポップアップの「ページ構造をコピー」を送ってください。',
       f: { type: '種類', location: '場所', size: 'サイズ', storage: '使用容量', owner: '所有者', modified: '更新日時',
         opened: '最終閲覧', created: '作成日時', access: 'アクセス', download: 'ダウンロード権限', description: '説明', shared: '共有日' },
     },
@@ -72,6 +74,7 @@
   .msg { color: var(--sub); padding: 24px 4px; text-align: center; }
   .msg.err { color: var(--fg); text-align: left; }
   .msg .hint { color: var(--sub); margin-top: 8px; }
+  .hint.partial { color: var(--sub); margin-top: 12px; font-size: 11.5px; line-height: 1.45; }
   .spin { width: 18px; height: 18px; margin: 0 auto 10px; border-radius: 50%; border: 2px solid var(--sep); border-top-color: var(--accent); animation: sp 0.8s linear infinite; }
   @keyframes sp { to { transform: rotate(360deg); } }
   table { width: 100%; border-collapse: collapse; }
@@ -190,6 +193,7 @@
       for (const p of extra) { const r = el('div', 'row'); r.append(el('div', 'k', (p.key ? L().f[p.key] : p.label) + ':'), el('div', 'v', p.value)); body.appendChild(r); rows++; }
     }
     if (!rows) body.appendChild(el('div', 'msg', t('none')));
+    if (data.partial) body.appendChild(el('div', 'hint partial', t('partial')));
   }
 
   function renderDetails(body, data) {
@@ -248,7 +252,19 @@
 
     const res = await DXE.details.read(ctx);
     if (my !== seq || !win) return; // closed or replaced meanwhile
-    if (res.ok) { data.state = 'done'; data.pairs = res.pairs; }
+    if (res.ok) {
+      data.state = 'done';
+      data.pairs = res.pairs.slice();
+      data.partial = !!res.partial;
+      if (data.partial && !data.pairs.some((x) => x.key === 'location') && DXE.toolbar && DXE.pathText) {
+        // location from our address bar (breadcrumbs), e.g. "マイドライブ/Projects"
+        try {
+          const path = DXE.pathText();
+          const root = SEL.uiLang() === 'ja' ? 'マイドライブ' : 'My Drive';
+          if (path && path.startsWith('/')) data.pairs.push({ label: L().f.location, value: path === '/' ? root : root + path, key: 'location' });
+        } catch (e) { /* ignore */ }
+      }
+    }
     else { data.state = 'failed'; data.why = res.why; }
     render();
   }

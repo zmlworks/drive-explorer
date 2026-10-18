@@ -107,10 +107,31 @@
   }
   DXE.report = report;
 
+  /* Capture the page structure *now* into chrome.storage.local (popup →
+     "Copy last capture"). Ctrl+Alt+Shift+S works while a Drive menu or the
+     details pane is open, which the popup button cannot do. */
+  function capture(via) {
+    let text;
+    try { text = DXE.structure.dump(); } catch (e) { text = '# capture failed: ' + e; }
+    text = text.replace(/^(# Drive Explorer .*)$/m, `$1  [captured via ${via}]`);
+    try { chrome.storage.local.set({ dxeLastStructure: { text, at: Date.now() } }); } catch (e) { /* ignore */ }
+    if (DXE.menu && DXE.menu.toast) DXE.menu.toast(SEL.uiLang() === 'ja' ? 'ページ構造を記録しました（ポップアップ →「最後の記録をコピー」）' : 'Page structure captured (popup → “Copy last capture”)');
+    DXE.log('structure captured', text.length, 'chars via', via);
+    return text;
+  }
+  DXE.captureStructure = capture;
+  window.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey && e.altKey && e.shiftKey && (e.code === 'KeyS' || /^s$/i.test(e.key)))) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    capture('hotkey');
+  }, true);
+
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       if (msg && msg.type === 'dxe-report') { reply(report()); }
       else if (msg && msg.type === 'dxe-structure') { try { reply({ ok: true, text: DXE.structure.dump() }); } catch (e) { reply({ ok: false, error: String(e) }); } }
+      else if (msg && msg.type === 'dxe-structure-later') { setTimeout(() => capture('timer'), Math.min(15000, msg.delay || 5000)); reply({ ok: true }); }
       return false;
     });
   }

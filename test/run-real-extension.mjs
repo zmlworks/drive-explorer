@@ -28,6 +28,8 @@ await ctx.route(/^https:\/\/(drive|docs)\.google\.com\//, (route) => {
   if (u.startsWith('https://drive.google.com/drive/')) return route.fulfill({ contentType: 'text/html', body: mockDrive });
   if (u.startsWith('https://drive.google.com/open?')) return route.fulfill({ contentType: 'text/html', body: '<title>opened</title>mock file viewer' });
   if (u.startsWith('https://docs.google.com/document/')) return route.fulfill({ contentType: 'text/html', body: mockDocs });
+  // 0.3.1: details-pane body served from another origin (cross-origin iframe → frame helper)
+  if (u.startsWith('https://docs.google.com/dxe-mock/details')) return route.fulfill({ contentType: 'text/html', body: mockDrive });
   return route.fulfill({ status: 204, body: '' });
 });
 await ctx.route(/^https?:\/\/(?!(drive|docs)\.google\.com)/, (route) => route.abort()); // offline guard
@@ -65,6 +67,28 @@ check('Properties dialog filled from Drive details pane (real extension)', /Type
 await page.screenshot({ path: path.join(OUT, 'real-extension-properties.png') });
 await page.keyboard.press('Escape');
 
+// 0.3.1: pane body in a cross-origin (docs.google.com) iframe → all_frames helper answers via postMessage
+{
+  const p2 = await ctx.newPage();
+  p2.on('pageerror', (e) => errors.push(e.message));
+  await p2.goto('https://drive.google.com/drive/my-drive?hl=en&nolog=1&dpframe=cross&dpkeep=1&crossbase=' + encodeURIComponent('https://docs.google.com/dxe-mock/details'));
+  await p2.waitForTimeout(1200);
+  const t2 = p2.locator('[data-id]', { hasText: 'beach.png' }).first();
+  await t2.click();
+  await t2.click({ button: 'right', position: { x: 30, y: 30 } });
+  await p2.locator('#dxe-menu-host >> .item[data-action="properties"]').click();
+  let body = '';
+  for (let i = 0; i < 40 && !/Size:/.test(body); i++) { await p2.waitForTimeout(200); body = await p2.evaluate(() => document.getElementById('dxe-props-host')?.shadowRoot?.querySelector('.body')?.innerText || ''); }
+  const frameUrl = await p2.evaluate(() => (document.querySelector('[data-dxe-details] iframe') || {}).src || '');
+  check('Properties read from a cross-origin docs.google.com pane iframe (frame helper)', /Type:\s*Image/.test(body) && /Size:\s*18 KB/.test(body) && /^https:\/\/docs\.google\.com\//.test(frameUrl), body.replace(/\n/g, ' ').slice(0, 120) + ' frame=' + frameUrl.slice(0, 60));
+  await p2.screenshot({ path: path.join(OUT, 'real-extension-properties-cross-origin-frame.png') });
+  // hotkey capture
+  await p2.keyboard.press('Escape');
+  await p2.keyboard.press('Control+Alt+Shift+S');
+  await p2.waitForTimeout(400);
+  await p2.close();
+}
+
 // popup → storage → content script
 const popup = await ctx.newPage();
 await popup.goto(`chrome-extension://${id}/popup/popup.html`);
@@ -92,13 +116,20 @@ const dump = await popup.evaluate(async () => {
 });
 check('page structure via popup → content script (sanitized)', dump && dump.ok && /role=grid/.test(dump.text) && !/beach\.png/.test(dump.text), dump && (dump.error || dump.text.length + ' chars'));
 
+const cap = await popup.evaluate(async () => (await chrome.storage.local.get('dxeLastStructure')).dxeLastStructure);
+check('Ctrl+Alt+Shift+S capture stored for "Copy last capture"', cap && /captured via hotkey/.test(cap.text) && /iframe src=‹docs\.google\.com/.test(cap.text) && /\[docs\.google\.com\/dxe-mock\/details cross-origin\]/.test(cap.text), cap ? cap.text.length + ' chars' : 'none');
+await popup.evaluate(async () => { const [t] = await chrome.tabs.query({ url: 'https://drive.google.com/*' }); return chrome.tabs.sendMessage(t.id, { type: 'dxe-structure-later', delay: 300 }); });
+await page.waitForTimeout(900);
+const cap2 = await popup.evaluate(async () => (await chrome.storage.local.get('dxeLastStructure')).dxeLastStructure);
+check('popup "Capture in 5 s" (delayed capture message) stores a capture', cap2 && /captured via timer/.test(cap2.text), cap2 ? cap2.text.slice(0, 80) : 'none');
+
 // 0.3.0: dblclick on a file → background service worker opens a new tab
 await page.bringToFront();
 const before = ctx.pages().length;
 const newTab = ctx.waitForEvent('page', { timeout: 4000 }).catch(() => null);
 await page.locator('[data-id]', { hasText: 'sunset.jpg' }).first().dblclick();
 const nt = await newTab;
-if (nt) await nt.waitForURL(/drive\.google\.com/, { timeout: 3000 }).catch(() => {});
+if (nt) await nt.waitForURL(/drive\.google\.com/, { timeout: 8000 }).catch(() => {});
 const ntUrl = nt ? nt.url() : '';
 check('dblclick on a file → new tab via background service worker', !!nt && /drive\.google\.com\/(open|file)/.test(ntUrl) &&
   !(await page.evaluate(() => window.__actions.some((a) => a.startsWith('OPEN sunset')))), ntUrl + ' pages ' + before + '→' + ctx.pages().length);

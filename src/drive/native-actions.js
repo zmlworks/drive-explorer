@@ -82,6 +82,22 @@
   };
 
   /** Open Drive's native context menu for ctx (hidden unless visible=true). */
+  /* Keep a sanitized copy of the last native menus we opened invisibly, for
+     "Copy page structure" (the menu is gone by the time the user copies). */
+  const menuSnaps = [];
+  function snapshot(menu, via) {
+    try {
+      const entry = { via, at: new Date().toISOString(), found: !!menu };
+      if (menu) {
+        entry.items = SEL.menuItems(menu).map((i) => ({ role: i.getAttribute('role'), label: SEL.labelCandidates(i)[0] || '',
+          popup: i.getAttribute('aria-haspopup') || '', disabled: SEL.isDisabled(i) }));
+        entry.tree = DXE.structure && DXE.structure.tree ? DXE.structure.tree(menu, { maxDepth: 14, maxLines: 160 }) : '';
+      }
+      menuSnaps.unshift(entry);
+      menuSnaps.length = Math.min(menuSnaps.length, 4);
+    } catch (e) { /* diagnostics only */ }
+  }
+
   async function openNativeMenu(ctx, { visible = false } = {}) {
     const before = new Set(SEL.visibleMenus());
     if (!visible) { clearTimeout(unhideTimer); hide(true); }
@@ -103,6 +119,7 @@
       }
     }
     DXE.log('native menu', menu ? 'opened via ' + via : 'NOT found', menu ? SEL.menuItems(menu).map((i) => SEL.labelCandidates(i)[0]) : '');
+    snapshot(menu, via);
     if (!menu && !visible) unhideSoon(0);
     return menu;
   }
@@ -117,6 +134,7 @@
     let sub = await waitFor(fresh, 450);
     if (!sub) { pressKey(item, { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 }); sub = await waitFor(fresh, 300); }
     if (!sub) { activate(item); sub = await waitFor(fresh, 450); }
+    snapshot(sub, 'submenu');
     return sub;
   }
 
@@ -276,6 +294,7 @@
   }
 
   DXE.native = {
+    menuSnaps,
     selectItem,
     isBypassing: () => bypass,
     perform,

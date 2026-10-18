@@ -129,16 +129,67 @@
   `;
 
   let host = null, root = null, bar = null;
+  // Real Drive (2026-10): .g3Fmkb column = header block .S630me (title row +
+  // role=toolbar row) above .PolqHc > role=main. Best spot: end of that header
+  // block, so Drive's own grid shrinks main. Fallback: right before main, with
+  // main's height compensated so its bottom isn't pushed off-screen.
+  function headerBlock(main) {
+    const mr = main.getBoundingClientRect();
+    for (let a = main, i = 0; a && a !== document.body && i < 4; a = a.parentElement, i++) {
+      for (let s = a.previousElementSibling; s; s = s.previousElementSibling) {
+        if (s.matches('[role="banner"],[data-dxe-ui]') || s.closest('[role="banner"]')) continue;
+        if (!s.querySelector('[role="toolbar"]')) continue;
+        const r = s.getBoundingClientRect();
+        if (r.height > 0 && r.bottom <= mr.top + 2 && r.width >= mr.width * 0.8 && r.left >= mr.left - 8) return s;
+      }
+    }
+    return null;
+  }
+  let rejectHeader = false;
   function anchor() {
     const main = SEL.scopeEl();
     if (!main || main === document.body) return null;
+    const hb = !rejectHeader && headerBlock(main);
+    if (hb) return { parent: hb, before: null, mode: 'header' };
     const cs = getComputedStyle(main);
     const rowish = (cs.display.includes('flex') && !cs.flexDirection.startsWith('column')) || cs.display.includes('grid');
-    if (!rowish) return { parent: main, before: main.firstChild };
+    if (!rowish) return { parent: main.parentElement || main, before: main.parentElement ? main : main.firstChild, mode: main.parentElement ? 'before-main' : 'in-main' };
     const p = main.parentElement, pcs = p && getComputedStyle(p);
-    if (p && !(pcs.display.includes('flex') && !pcs.flexDirection.startsWith('column')) && !pcs.display.includes('grid')) return { parent: p, before: main };
-    return { parent: main, before: main.firstChild, fullRow: true };
+    if (p && !(pcs.display.includes('flex') && !pcs.flexDirection.startsWith('column')) && !pcs.display.includes('grid')) return { parent: p, before: main, mode: 'before-main' };
+    return { parent: main, before: main.firstChild, fullRow: true, mode: 'in-main' };
   }
+  let placed = null, fixedMain = null;
+  const fitStats = (DXE.toolbarStats = { mode: null, compensated: 0 });
+  function unfix() {
+    if (fixedMain) { fixedMain.style.removeProperty('height'); fixedMain.style.removeProperty('max-height'); fixedMain = null; }
+  }
+  /** keep main's bottom inside its container after we took 40px */
+  function fit() {
+    if (!host || !host.isConnected || !placed) return;
+    const main = SEL.scopeEl();
+    if (!main || main === document.body) return;
+    const hr = host.getBoundingClientRect(), mr = main.getBoundingClientRect();
+    if (placed.mode === 'header' && hr.bottom > mr.top + 2) {
+      // header has a fixed height: our bar would overlap the list; use plan B
+      rejectHeader = true; host.remove(); placed = null; schedule(); return;
+    }
+    if (placed.mode !== 'before-main') { unfix(); return; }
+    const par = main.parentElement;
+    const limit = Math.min(par.getBoundingClientRect().bottom, innerHeight);
+    const over = Math.round(mr.bottom - limit);
+    if (fixedMain === main) {
+      const want = Math.max(100, Math.round(limit - mr.top));
+      if (Math.abs(parseFloat(main.style.height) - want) > 1) main.style.setProperty('height', want + 'px', 'important');
+    } else if (over > 1) {
+      unfix();
+      fixedMain = main;
+      main.style.setProperty('height', Math.max(100, Math.round(mr.height - over)) + 'px', 'important');
+      main.style.setProperty('max-height', 'none', 'important');
+      fitStats.compensated++;
+    }
+  }
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => fit()) : null;
+  window.addEventListener('resize', () => setTimeout(fit, 50));
 
   function build() {
     host = document.createElement('div');
@@ -167,6 +218,7 @@
     if (v === 'grid' && !DXE.settings.mediumIcons) DXE.saveSetting('mediumIcons', true);
     const b = SEL.findLayoutButton(v === 'grid' ? SEL.NAV.gridLayout : SEL.NAV.listLayout);
     if (b) DXE.native.activate(b);
+    else if (SEL.layoutShortcut && (v === 'grid') !== !!(DXE.tileStats && DXE.tileStats.tiles > 0)) SEL.layoutShortcut();
     else if (!((v === 'grid' && DXE.tileStats.tiles) || (v === 'list' && DXE.tileStats.listRows && !DXE.tileStats.tiles))) DXE.menu.toast(t('noLayout'));
     setTimeout(render, 400);
   }
@@ -203,15 +255,21 @@
   }
 
   function ensure() {
-    if (!DXE.settings.explorerToolbar) { if (host) host.remove(); return; }
+    if (!DXE.settings.explorerToolbar) { if (host) host.remove(); unfix(); placed = null; if (ro) ro.disconnect(); return; }
     if (!host) build();
     if (!host.isConnected) {
       const a = anchor();
       if (!a) return;
       a.parent.insertBefore(host, a.before);
+      placed = a;
+      fitStats.mode = a.mode;
+      DXE.log('toolbar placed', a.mode);
       lastSig = '';
+      if (ro) { ro.disconnect(); ro.observe(a.parent); const m = SEL.scopeEl(); if (m && m !== document.body) ro.observe(m); if (m && m.parentElement) ro.observe(m.parentElement); }
+      requestAnimationFrame(fit);
     }
     render();
+    fit();
   }
 
   let pend = 0, lastHref = location.href;

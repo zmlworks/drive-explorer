@@ -124,5 +124,20 @@
   },
   "structureCopied": {
     "message": "Page structure copied ($1). File names and IDs are removed."
+  },
+  "btnStructureLater": {
+    "message": "Capture in 5 s"
+  },
+  "btnStructureLast": {
+    "message": "Copy last capture"
+  },
+  "structureHotkey": {
+    "message": "Tip: open a Drive menu or the details pane, then press Ctrl+Alt+Shift+S (or use “Capture in 5 s”), then “Copy last capture”."
+  },
+  "structureLaterArmed": {
+    "message": "Capturing in 5 seconds — switch to Drive and open the menu/pane now."
+  },
+  "structureNone": {
+    "message": "Nothing captured yet."
   }
 }

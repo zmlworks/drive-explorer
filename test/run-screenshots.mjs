@@ -142,7 +142,8 @@ for (const lang of ['en', 'ja']) {
       await menuItem(page, 'driveMenu').click();
       await page.waitForTimeout(700);
       const vis = await page.evaluate(() => DXE.SEL.visibleMenus().map((m) => getComputedStyle(m).opacity));
-      check(`[${tag}] "Show Drive menu" shows native menu visibly`, vis.length === 1 && vis[0] === '1', JSON.stringify(vis));
+      // (≥1: Drive may also open a hover submenu under the pointer)
+      check(`[${tag}] "Show Drive menu" shows native menu visibly`, vis.length >= 1 && vis.every((o) => o === '1'), JSON.stringify(vis));
       await page.screenshot({ path: path.join(OUT, `03-drive-menu-fallback-${tag}.png`) });
       await page.keyboard.press('Escape');
       // Shift+right-click → native
@@ -486,16 +487,108 @@ for (const lang of ['en', 'ja']) {
   const { ctx, page } = await openDrive({ hl: 'en', nolog: 1, autodetails: 1, dpnotabs: 1 }, { suppressDetails: true });
   await tileByName(page, 'mountains.jpg').click();
   await page.waitForTimeout(1300);
-  const pi = await page.evaluate(() => { const p = document.querySelector('[data-dxe-details]'); return { open: window.__details.isOpen(), tagged: !!p, isDp: !!(p && p.classList.contains('dp')), opacity: p ? getComputedStyle(p).opacity : null, strategy: DXE.detailsStats && DXE.detailsStats.strategy, grid: getComputedStyle(document.getElementById('grid')).opacity }; });
+  const pi = await page.evaluate(() => { const p = document.querySelector('[data-dxe-details]'); return { open: window.__details.isOpen(), tagged: !!p, isDp: !!(p && (p.classList.contains('dp') || !!p.querySelector('.dp'))), opacity: p ? getComputedStyle(p).opacity : null, strategy: DXE.detailsStats && DXE.detailsStats.strategy, grid: getComputedStyle(document.getElementById('grid')).opacity }; });
   check('[heuristic] tab-less right pane hidden via side-heuristic, list untouched', pi.open && pi.isDp && pi.opacity === '0' && pi.grid === '1', JSON.stringify(pi));
   await page.screenshot({ path: path.join(OUT, '17-side-heuristic-pane-hidden-en-light.png') });
   // page structure dump (with the pane open)
   const dump = await page.evaluate(() => DXE.structure.dump());
   const leaks = ['beach.png', 'mountains.jpg', 'Meeting notes', 'README', '1AbC'].filter((x) => dump.includes(x));
-  check('[structure] sanitized dump: no names/ids, has roles, right panel, <200KB', !leaks.length && /role=grid/.test(dump) && /## right-side column candidates \([1-9]/.test(dump) && dump.length < 210000 && /"Move to trash"/.test(dump), 'leaks=' + leaks.join(',') + ' len=' + dump.length);
-  fs.writeFileSync(path.join(OUT, 'page-structure-sample.txt'), dump);
+  check('[structure] sanitized dump (legacy pane): no names/ids, has roles, pane section, <270KB', !leaks.length && /role=grid/.test(dump) && /## details pane \(deep[^\n]*\n\S/.test(dump) && dump.length < 270000 && /"Move to trash"/.test(dump), 'leaks=' + leaks.join(',') + ' len=' + dump.length);
+  fs.writeFileSync(path.join(OUT, 'page-structure-sample-legacy-pane.txt'), dump);
   await ctx.close();
 }
+// ===== 0.3.1: real-DOM structure (from the user's dumps) =====
+{
+  // pane found by aria-label "詳細ウィンドウ"/"Details window" + hideDetails hook; rail / transcript sidebar ignored
+  for (const lang of ['en', 'ja']) {
+    const { ctx, page } = await openDrive({ hl: lang, nolog: 1, autodetails: 1 }, { suppressDetails: true });
+    await tileByName(page, 'mountains.jpg').click();
+    await page.waitForTimeout(800);
+    const r = await page.evaluate(() => { const p = document.querySelector('[data-dxe-details]'); return {
+      strategy: DXE.detailsStats.strategy, label: p && p.getAttribute('aria-label'), n: document.querySelectorAll('[data-dxe-details]').length,
+      open: DXE.SEL.detailsPanelOpen(p), header: DXE.SEL.detailsHeader(p), mainW: Math.round(document.querySelector('[role=main]').getBoundingClientRect().width),
+      railTagged: document.getElementById('rail').hasAttribute('data-dxe-details') || document.getElementById('tsbar').hasAttribute('data-dxe-details') }; });
+    check(`[real-${lang}] details pane = complementary[aria-label=${lang === 'ja' ? '詳細ウィンドウ' : 'Details window'}] (not rail/transcript)`,
+      /aria-label|hideDetails/.test(r.strategy) && r.n === 1 && /詳細ウィンドウ|Details window/.test(r.label) && !r.railTagged, JSON.stringify(r));
+    check(`[real-${lang}] pane state measured through our hiding CSS + header name/type`, r.open && r.header.name === 'mountains.jpg' && /Image|画像/.test(r.header.type), JSON.stringify(r.header));
+    await ctx.close();
+  }
+  // toolbar goes into the header block (.S630me) and main keeps its bottom on screen
+  for (const hdrfixed of [0, 1]) {
+    const { ctx, page } = await openDrive({ hl: 'en', nolog: 1, ...(hdrfixed ? { hdrfixed: 1 } : {}) }, {});
+    await page.waitForTimeout(500);
+    const r = await page.evaluate(() => { const m = document.querySelector('[role=main]').getBoundingClientRect(); const h = document.getElementById('dxe-toolbar-host').getBoundingClientRect();
+      const box = document.querySelector('.PolqHc').getBoundingClientRect(); return { mode: DXE.toolbarStats.mode, comp: DXE.toolbarStats.compensated, overlap: h.bottom > m.top + 2, mainBottom: Math.round(m.bottom), boxBottom: Math.round(box.bottom), vh: innerHeight }; });
+    check(`[real] toolbar placement ${hdrfixed ? '(fixed-height header → before main, height compensated)' : '(end of header block)'}`,
+      r.mode === (hdrfixed ? 'before-main' : 'header') && !r.overlap && r.mainBottom <= r.boxBottom + 1 && r.mainBottom <= r.vh, JSON.stringify(r));
+    if (!hdrfixed) await page.screenshot({ path: path.join(OUT, '30-real-structure-toolbar-in-header-en-light.png') });
+    await ctx.close();
+  }
+  // Properties per pane-body variant: same-origin iframe (default), inline, unreadable iframe (partial)
+  for (const [mode, lang] of [['same', 'ja'], ['inline', 'en'], ['opaque', 'en'], ['opaque', 'ja']]) {
+    const { ctx, page } = await openDrive({ hl: lang, nolog: 1, dpframe: mode }, { suppressDetails: true });
+    const t = tileByName(page, 'beach.png');
+    await t.click();
+    await t.click({ button: 'right', position: { x: 30, y: 30 } });
+    await menuItem(page, 'properties').click();
+    const st = await waitProps(page, 9000);
+    const scr = await page.evaluate(() => DXE.detailsStats.lastScrape);
+    if (mode === 'opaque') {
+      check(`[real-${lang}] unreadable pane body → partial Properties (type from pane header + location + note)`, st && !st.failed && /(Type|種類):\s*(Image|画像)/.test(st.body) && /(Location|場所):/.test(st.body) && /Copy page structure|ページ構造をコピー/.test(st.body) && scr.partial, st && st.body.replace(/\n/g, ' ').slice(0, 200));
+      await page.screenshot({ path: path.join(OUT, `31-properties-partial-${lang}-light.png`) });
+    } else {
+      check(`[real-${lang}] Properties from ${mode === 'same' ? 'same-origin iframe' : 'inline'} pane body`, st && !st.failed && /(Size|サイズ):\s*18 KB/.test(st.body) && !scr.partial && (mode !== 'same' || /iframe\(same-origin\)/.test((scr.sources || []).join())), JSON.stringify(scr));
+      if (mode === 'same') await page.screenshot({ path: path.join(OUT, `32-properties-from-iframe-${lang}-light.png`) });
+    }
+    await page.waitForTimeout(400);
+    check(`[real-${lang}] pane (${mode}) closed again via [data-target=hideDetails]`, !(await page.evaluate(() => window.__details.isOpen())));
+    await ctx.close();
+  }
+  // pane kept in the DOM when closed (wrapper collapsed): must not count as open
+  {
+    const { ctx, page } = await openDrive({ hl: 'en', nolog: 1, dpkeep: 1 }, { suppressDetails: true });
+    await page.evaluate(() => { window.__details.open(); window.__details.close(); });
+    await page.waitForTimeout(300);
+    const r1 = await page.evaluate(() => { const p = DXE.details.tag(); return { tagged: !!p, open: DXE.SEL.detailsPanelOpen(p) }; });
+    const t = tileByName(page, 'README.txt');
+    await t.click();
+    await t.click({ button: 'right', position: { x: 30, y: 30 } });
+    await menuItem(page, 'properties').click();
+    const st = await waitProps(page, 9000);
+    await page.waitForTimeout(400);
+    check('[real] collapsed-but-present pane: not "open"; Properties opens + re-closes it', r1.tagged && !r1.open && st && !st.failed && /Text/.test(st.body) && !(await page.evaluate(() => window.__details.isOpen())), JSON.stringify(r1));
+    const snaps = await page.evaluate(() => DXE.native.menuSnaps.map((s) => s.via + ':' + (s.items || []).length));
+    check('[real] native menu snapshot recorded for diagnostics', snaps.length >= 1 && /contextmenu:\d+/.test(snaps.join()), snaps.join());
+    // hotkey capture → chrome.storage.local
+    await page.keyboard.press('Control+Alt+Shift+S');
+    await page.waitForTimeout(200);
+    const cap = await page.evaluate(() => (chrome.storage.local._s.dxeLastStructure || {}).text || '');
+    check('[structure] Ctrl+Alt+Shift+S captures the page structure', /captured via hotkey/.test(cap) && /## last native menus opened by Drive Explorer \([1-9]/.test(cap), cap.length + ' chars');
+    await ctx.close();
+  }
+  // no list/grid buttons → Drive's "v" shortcut
+  {
+    const { ctx, page } = await openDrive({ hl: 'en', nolog: 1, nolay: 1 }, {});
+    await page.locator('#dxe-toolbar-host >> button[data-id="list"]').click();
+    await page.waitForTimeout(300);
+    check('[real] view switch falls back to Drive\'s "v" shortcut', (await page.evaluate(() => window.__actions)).includes('LAYOUT-TOGGLE-V'));
+    await ctx.close();
+  }
+  // structure dump with the real pane open (same-origin iframe), labels kept, values stripped
+  {
+    const { ctx, page } = await openDrive({ hl: 'ja', nolog: 1, crumbs: 'プロジェクト資料/2026' }, { suppressDetails: true });
+    await tileByName(page, 'beach.png').click();
+    await page.evaluate(() => window.__details.open());
+    await page.waitForTimeout(900);
+    const dump = await page.evaluate(() => DXE.structure.dump());
+    const leaks = ['beach.png', 'mountains.jpg', '議事録', 'README', '1AbC', 'プロジェクト資料', 'zoe@example.com', '"18 KB"', '"自分"', 'Aiko'].filter((x) => dump.includes(x));
+    const has = ['## details pane (deep', 'iframe src=', 'sameOrigin=true', '"種類"', '"サイズ"', '"場所"', '## header above role=main (1', '# native toolbar', '## path from role=main to the first file item', 'data-has-sections', '# details pane: open(Drive layout)=true headerType="画像"'].filter((x) => !dump.includes(x));
+    check('[structure] real-pane dump: labels kept, values/names stripped, iframe walked, focus sections', !leaks.length && !has.length && dump.length < 270000, 'leaks=' + leaks.join(',') + ' missing=' + has.join(' | ') + ' len=' + dump.length);
+    fs.writeFileSync(path.join(OUT, 'page-structure-sample.txt'), dump);
+    await ctx.close();
+  }
+}
+
 // toggles off → no toolbar/status/bin/ficons
 {
   const { ctx, page } = await openDrive({ hl: 'en', nolog: 1 }, { explorerToolbar: false, statusBar: false, recycleBin: false, fluentIcons: false });

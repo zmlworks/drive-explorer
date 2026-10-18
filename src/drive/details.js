@@ -53,95 +53,83 @@
     if (panel && !panel.isConnected) { panel = null; check(); }
   }).observe(document.documentElement, { childList: true, subtree: true });
 
-  /* ---------- scraping ---------- */
-  const isUiButton = (el) => {
-    const b = el.closest('button,[role="button"]');
-    if (!b) return false;
-    const aria = norm(b.getAttribute('aria-label'));
-    return D.ignoreText.test(aria || norm(b.textContent)) || D.closeButton.test(aria) ||
-      (!!aria && !norm(b.textContent).replace(/[^\p{L}\p{N}]/gu, '')); // icon-only buttons (✕, ⋮)
-  };
-  /** visible-ish text of el, skipping UI buttons. alt=true: avatar alts are
-      used when there is no other text (e.g. "Aiko, Ben"). */
-  function textOf(el, alt = true) {
-    const parts = [], alts = [];
-    const walk = (n) => {
-      if (n.nodeType === 3) { const t = norm(n.nodeValue); if (t) parts.push(t); return; }
-      if (n.nodeType !== 1) return;
-      if (n.matches('[aria-hidden="true"],script,style,svg') || isUiButton(n)) return;
-      if (n.tagName === 'IMG') { if (n.alt) alts.push(norm(n.alt)); return; }
-      for (const c of n.childNodes) walk(c);
-    };
-    walk(el);
-    const txt = parts.join(' ').replace(/\s+/g, ' ').trim();
-    return txt || (alt ? alts.join(', ') : '');
+  /* ---------- scraping (pane itself + iframes inside it) ---------- */
+  const { scrapeRoot } = DXE.scrapeCore;
+  let reqId = 0;
+  const pending = new Map();
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d || d.__dxe !== 'scrape-result' || !/^https:\/\/(drive|docs)\.google\.com$/.test(e.origin)) return;
+    const f = pending.get(d.id);
+    if (f) { pending.delete(d.id); f(d); }
+  });
+  const askFrame = (win) => new Promise((resolve) => {
+    const id = 'dxe' + (++reqId);
+    pending.set(id, resolve);
+    try { win.postMessage({ __dxe: 'scrape', id }, '*'); } catch (e) { pending.delete(id); resolve(null); return; }
+    setTimeout(() => { if (pending.delete(id)) resolve(null); }, 900);
+  });
+  /** Frames inside the pane: [{ el, doc|null, crossOrigin, src }] */
+  function framesOf(p) {
+    return [...p.querySelectorAll('iframe')].map((el) => {
+      let doc = null;
+      try { doc = el.contentDocument; } catch (e) { doc = null; }
+      let src = '';
+      try { const u = new URL(el.src || 'about:blank', location.href); src = u.host + u.pathname.replace(/[A-Za-z0-9_-]{20,}/g, '<id>'); } catch (e) { src = '?'; }
+      return { el, doc: doc && doc.body ? doc : null, src };
+    });
+  }
+  async function scrapePanel(p) {
+    const results = [{ via: 'pane', ...scrapeRoot(p) }];
+    for (const f of framesOf(p)) {
+      if (f.doc) results.push({ via: 'iframe(same-origin) ' + f.src, ...scrapeRoot(f.doc.body) });
+      else if (f.el.contentWindow) {
+        const r = await askFrame(f.el.contentWindow);
+        if (r && r.result) results.push({ via: 'iframe(helper) ' + (r.href || f.src), ...r.result });
+        else results.push({ via: 'iframe(unreadable) ' + f.src, pairs: [], strategy: 'none', title: '' });
+      }
+    }
+    const score = (r) => r.pairs.filter((x) => x.key).length * 10 + r.pairs.length;
+    const best = results.sort((x, y) => score(y) - score(x))[0];
+    best.sources = results.map((r) => r.via + ':' + r.pairs.length);
+    const hdr = SEL.detailsHeader(p);
+    best.header = hdr;
+    if (!best.title) best.title = hdr.name;
+    return best;
+  }
+  /** sync variant for diagnostics (pane + same-origin frames only) */
+  function scrape(p) {
+    const r = scrapeRoot(p);
+    for (const f of framesOf(p)) if (f.doc) { const x = scrapeRoot(f.doc.body); if (x.pairs.length > r.pairs.length) Object.assign(r, x); }
+    return r;
   }
 
-  function scrape(p) {
-    const cands = [];
-    for (const el of p.querySelectorAll('*')) {
-      if (el.closest('[role="tablist"],[role="tab"]')) continue;
-      if (el.tagName === 'DL') continue; // handled below
-      const kids = [...el.children].filter((k) => textOf(k));
-      if (kids.length !== 2) continue;
-      const label = textOf(kids[0], false);
-      const value = textOf(kids[1]);
-      if (!label || label.length > 40 || !value || value.length > 400) continue;
-      if (D.headings.test(label) && !SEL.labelKey(label)) continue;
-      if (kids[0].querySelector('button,[role="button"]') && !SEL.labelKey(label)) continue;
-      cands.push({ el, label, value, key: SEL.labelKey(label) });
-    }
-    // dl/dt/dd
-    p.querySelectorAll('dt').forEach((dt) => {
-      const dd = dt.nextElementSibling;
-      if (dd && dd.tagName === 'DD') cands.push({ el: dt, label: textOf(dt), value: textOf(dd), key: SEL.labelKey(textOf(dt)) });
-    });
-    // keep leaf-most candidates
-    let pairs = cands.filter((c) => !cands.some((o) => o !== c && c.el.contains(o.el)));
-    let strategy = 'structure';
-    // fallback: innerText lines, known labels followed by their value line
-    if (pairs.filter((x) => x.key).length < 2) {
-      const lines = (p.innerText || '').split('\n').map(norm).filter(Boolean);
-      const viaLines = [];
-      for (let i = 0; i < lines.length - 1; i++) {
-        const k = SEL.labelKey(lines[i]);
-        if (k && !SEL.labelKey(lines[i + 1])) viaLines.push({ label: lines[i], value: lines[i + 1], key: k });
-      }
-      if (viaLines.length > pairs.filter((x) => x.key).length) { pairs = viaLines; strategy = 'lines'; }
-    }
-    const seen = new Set();
-    pairs = pairs.filter((x) => { const k = x.label.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
-      .map(({ label, value, key }) => ({ label, value, key }));
-    // panel title (file name): first heading-ish text before the tabs
-    let title = '';
-    const h = p.querySelector('[role="heading"],h1,h2');
-    if (h) title = textOf(h);
-    return { pairs, strategy, title };
-  }
+  const itemName = (item) => {
+    const n = item && item.querySelector('[data-dxe-part="name"]');
+    return norm(n ? n.textContent : ((item && SEL.analyzeTile(item).name) || {}).textContent || '');
+  };
+  const sameName = (a, b) => !!a && !!b && (a === b || a.startsWith(b) || b.startsWith(a));
 
   /* ---------- read(item) ---------- */
-  async function read(ctx, { timeout = 4500 } = {}) {
+  async function read(ctx, { timeout = 5000 } = {}) {
     const html = document.documentElement;
-    const wasOpen = !!(tag(false) && SEL.isShown(panel));
+    const wasOpen = SEL.detailsPanelOpen(tag(false));
     prevListWidth = SEL.listWidth();
     html.classList.add('dxe-props-busy');
-    const res = { ok: false, pairs: [], why: '', opened: false };
+    const want = itemName(ctx.item);
+    const res = { ok: false, pairs: [], why: '', opened: false, wasOpen };
     try {
-      if (!wasOpen) {
-        const ok = await DXE.native.perform('info', ctx);
-        res.opened = ok;
-      } else {
-        // panel follows selection; make sure the item is selected
-        if (!SEL.isSelected(ctx.item)) DXE.native.selectItem(ctx.item);
-      }
+      if (!SEL.isSelected(ctx.item)) DXE.native.selectItem(ctx.item);
+      // Drive's pane follows the selection: if it is already open (it usually
+      // is while we keep it hidden), no need to go through the menu.
+      if (!wasOpen) res.opened = await DXE.native.perform('info', ctx);
       const end = performance.now() + timeout;
-      let prevSig = '', stable = 0, tabClicked = false, best = null, toolbarTried = false;
+      let prevSig = '', stable = 0, tabClicked = false, best = null, toolbarTried = false, header = null;
       const t0 = performance.now();
       while (performance.now() < end) {
-        await sleep(120);
+        await sleep(140);
         const p = tag();
-        if (!p) {
-          // menu route didn't open it → try the toolbar "View details" (i) button once
+        if (!p || !SEL.detailsPanelOpen(p)) {
           if (!toolbarTried && performance.now() - t0 > 1500) {
             toolbarTried = true;
             const b = SEL.findToolbarButton(SEL.ACTIONS.info.toolbar) || SEL.findToolbarButton(D.toolbarDetails);
@@ -150,9 +138,14 @@
           }
           continue;
         }
+        header = SEL.detailsHeader(p);
+        // wait (a while) until the pane shows the right item
+        if (want && header.name && !sameName(header.name, want) && performance.now() - t0 < timeout * 0.7) continue;
         const tab = SEL.detailsTab(p);
         if (tab && tab.getAttribute('aria-selected') === 'false' && !tabClicked) { DXE.native.activate(tab); tabClicked = true; continue; }
-        const s = scrape(p);
+        const s = await scrapePanel(p);
+        // body only in frames we cannot read: don't wait for the full timeout
+        if (!s.pairs.length && header.name && (s.sources || []).some((x) => x.startsWith('iframe(unreadable)')) && performance.now() - t0 > 2200) { best = best || s; break; }
         const known = s.pairs.filter((x) => x.key).length;
         if (!best || s.pairs.length >= best.pairs.length) best = s;
         const sig = s.pairs.map((x) => x.label + '=' + x.value).join('|');
@@ -162,8 +155,19 @@
       if (best && best.pairs.length) {
         res.ok = true;
         Object.assign(res, best);
+      } else if (header && (header.name || header.type)) {
+        // pane body unreadable, but the header tells name + type
+        res.ok = true;
+        res.partial = true;
+        res.title = header.name;
+        res.pairs = header.type ? [{ label: SEL.uiLang() === 'ja' ? '種類' : 'Type', value: header.type, key: 'type' }] : [];
+        res.strategy = 'header-only';
+        res.sources = best ? best.sources : [];
+        res.why = 'pane body not readable (' + ((best && best.sources) || []).join(', ') + ')';
       } else res.why = panel ? 'panel found but no fields recognised' : 'details panel did not open';
-      stats.lastScrape = { ok: res.ok, strategy: res.strategy, fields: res.pairs.map((x) => x.key || '?'), why: res.why, panelStrategy: stats.strategy };
+      if (header) res.header = header;
+      stats.lastScrape = { ok: res.ok, partial: !!res.partial, strategy: res.strategy, sources: res.sources, fields: res.pairs.map((x) => x.key || '?'),
+        why: res.why, panelStrategy: stats.strategy, wasOpen, nameMatched: header ? sameName(header.name, want) : null };
       DXE.log('details scrape', stats.lastScrape, res.pairs);
       return res;
     } finally {
@@ -200,6 +204,8 @@
   DXE.details = {
     read,
     scrape,
+    scrapePanel,
+    framesOf,
     tag,
     setSuppressed(on) {
       document.documentElement.classList.toggle('dxe-hide-details', !!on);

@@ -10,9 +10,10 @@
 (() => {
   'use strict';
   const DXE = (globalThis.DXE = globalThis.DXE || {});
+  if (DXE.SEL) return; // loaded twice (top frame + all_frames helper entry)
 
   const S = (DXE.SEL = {
-    revision: '2026-10-18c',
+    revision: '2026-10-18r1', // r1 = first pass from real-Drive structure dumps (0.3.1)
 
     /* Elements that represent one file/folder. Tried in order; the first
        selector whose closest() hits wins. Grid tiles and list rows both match. */
@@ -106,6 +107,8 @@
     info: {
       paths: [[L.FILE_INFO, L.DETAILS], [L.DETAILS]],
       toolbar: /^(view details|show details|details|詳細を表示|詳細の表示|詳細)$/i,
+      /* real Drive tooltip seen in a dump: "詳細(Alt+→)" */
+      keys: [{ key: 'ArrowRight', code: 'ArrowRight', keyCode: 39, altKey: true }],
     },
     delete: {
       paths: [[L.TRASH]],
@@ -335,13 +338,21 @@
 
   /* Selection action bar buttons (outside items). */
   S.findToolbarButton = (re) => {
-    const cands = document.querySelectorAll('[role="button"][aria-label],button[aria-label],[role="button"][data-tooltip]');
+    // Real Drive: the selection actions live in a role=toolbar row (.uEnUtd)
+    // in the header block above role=main. Prefer buttons there; skip the
+    // right rail (サイドパネル), hidden viewer dialogs and our own UI.
+    const cands = document.querySelectorAll('[role="button"][aria-label],button[aria-label],[role="button"][data-tooltip],[role="menuitem"][aria-label]');
+    let fallback = null;
     for (const b of cands) {
-      if (S.isOurs(b) || b.closest(LISTISH) || b.closest(S.menu)) continue;
+      if (S.isOurs(b) || b.closest(LISTISH) || b.closest(S.menu) || b.closest('[aria-hidden="true"],[role="banner"],[role="tree"]')) continue;
+      const comp = b.closest('[role="complementary"]');
+      if (comp && !comp.hasAttribute('data-dxe-details')) continue;
       const lbl = norm(b.getAttribute('aria-label') || b.getAttribute('data-tooltip'));
-      if (re.test(lbl) && S.isShown(b) && !S.isDisabled(b)) return b;
+      if (!re.test(lbl) || !S.isShown(b) || S.isDisabled(b)) continue;
+      if (b.closest('[role="toolbar"]')) return b;
+      if (!fallback) fallback = b;
     }
-    return null;
+    return fallback;
   };
 
   /* ---------------- URLs ---------------- */
@@ -371,6 +382,16 @@
     tabDetails: /^(details|詳細)$/i,
     tabActivity: /^(activity|アクティビティ)$/i,
     closeButton: /^(close|close details|hide details|閉じる|詳細を閉じる|詳細を非表示|詳細パネルを閉じる)$/i,
+    /* real Drive (2026-10 dump): <div role=complementary aria-label="詳細ウィンドウ">
+         … <div aria-label="<name> <type>"><h2><div role=button data-target=open>name</div></h2></div>
+         … <div data-target=hideDetails><button aria-label="詳細を閉じる"></div>
+         … <div role=tablist> … then .a-ub-oa > N tab panels (first = Details)            */
+    hooks: {
+      root: '[role="complementary"]',
+      title: '[data-target="open"]',
+      close: '[data-target="hideDetails"] button,[data-target="hideDetails"] [role="button"]',
+      headerLabel: '[aria-label]:has(> h2 [data-target="open"]),[aria-label]:has(> h2),[aria-label]:has(> [role="heading"])',
+    },
     hideToolbar: /^(hide details|詳細を非表示)$/i,
     /* button texts that are UI, not values */
     ignoreText: /^(manage access|アクセスを管理|share|共有|edit|編集|add description|説明を追加|show more|もっと見る|さらに表示)$/i,
@@ -421,6 +442,17 @@
       }
       return best;
     };
+    // 0. real Drive: complementary labelled like the details pane, or holding its close hook
+    for (const c of document.querySelectorAll('[role="complementary"],aside')) {
+      if (S.isOurs(c) || c.closest('[aria-hidden="true"]')) continue;
+      const al = norm(c.getAttribute('aria-label'));
+      if (al && D.notPanelLabels.test(al)) continue;
+      const labelled = al && D.panelAriaLabels.includes(al);
+      if ((labelled || c.querySelector('[data-target="hideDetails"]')) && !c.querySelector('[role="main"],[role="grid"] [data-id]')) {
+        S.lastDetailsStrategy = labelled ? 'aria-label' : 'hideDetails-hook';
+        return c;
+      }
+    }
     // 1. Details + Activity tabs side by side
     for (const tab of tabMatches(D.tabDetails)) {
       const list = tab.closest('[role="tablist"]') || tab.parentElement;
@@ -438,6 +470,8 @@
   };
 
   S.findDetailsClose = (panel) => {
+    const hook = panel.querySelector(D.hooks.close);
+    if (hook) return hook;
     for (const b of panel.querySelectorAll('[role="button"],button')) {
       const l = norm(b.getAttribute('aria-label') || b.getAttribute('data-tooltip') || b.textContent);
       if (D.closeButton.test(l)) return b;
@@ -445,11 +479,56 @@
     return null;
   };
 
+  /** Is Drive showing the pane (even if we made it invisible)? */
+  // Our hiding CSS (html.dxe-hide-details / dxe-props-busy) pins the pane to
+  // a fixed 360px box, so it would always *look* open. Measure Drive's own
+  // layout by lifting those classes for one synchronous layout pass (no paint
+  // happens in between, so nothing flickers).
+  const HIDE_CLASSES = ['dxe-hide-details', 'dxe-props-busy'];
+  S.withoutHiding = (fn) => {
+    const cl = document.documentElement.classList;
+    const had = HIDE_CLASSES.filter((c) => cl.contains(c));
+    if (!had.length) return fn();
+    had.forEach((c) => cl.remove(c));
+    try { return fn(); } finally { had.forEach((c) => cl.add(c)); }
+  };
+  S.detailsPanelOpen = (p) => {
+    if (!p || !p.isConnected) return false;
+    return S.withoutHiding(() => {
+      const r = p.getBoundingClientRect();
+      if (r.width < 50 || r.height < 100) return false;
+      if (r.left >= innerWidth - 4) return false; // slid out to the right
+      // a collapsed wrapper (real Drive: .wbg7nb > .a-Mg-al) clips an otherwise sized pane
+      for (let a = p.parentElement, i = 0; a && i < 3 && a !== document.body; a = a.parentElement, i++) {
+        const ar = a.getBoundingClientRect();
+        if (ar.width < 50 && getComputedStyle(a).overflow !== 'visible') return false;
+      }
+      const cs = getComputedStyle(p);
+      if (cs.visibility === 'hidden' || cs.display === 'none') return false;
+      const t = p.querySelector(D.hooks.title) || p.querySelector('[role="heading"],h1,h2');
+      return !t || t.getBoundingClientRect().width > 0;
+    });
+  };
+  /** Name + type shown in the pane header (real Drive: aria-label="<name> <type>" around the h2). */
+  S.detailsHeader = (p) => {
+    const t = p && (p.querySelector(D.hooks.title) || p.querySelector('h2,[role="heading"]'));
+    const name = t ? norm(t.textContent) : '';
+    let type = '';
+    let lab = null;
+    try { lab = p.querySelector(D.hooks.headerLabel); } catch (e) { /* :has unsupported */ }
+    if (!lab && t) for (let a = t.parentElement; a && a !== p; a = a.parentElement) if (a.hasAttribute('aria-label')) { lab = a; break; }
+    const al = lab ? norm(lab.getAttribute('aria-label')) : '';
+    if (al && name && al.startsWith(name)) type = norm(al.slice(name.length));
+    return { name, type, ariaLabel: al };
+  };
+
   /* ================= 0.3.0 additions ================= */
 
   /* aria-labels Drive may put on the details side panel (complementary/region) */
-  D.panelAriaLabels = ['Details', 'Activity', 'Details panel', 'Details and activity', 'File details', 'Info',
-    '詳細', 'アクティビティ', 'ファイル情報', '詳細パネル', '詳細とアクティビティ', 'ファイルの詳細', '情報'];
+  D.panelAriaLabels = ['Details', 'Activity', 'Details panel', 'Details pane', 'Details window', 'Details and activity', 'File details', 'Info',
+    '詳細', '詳細ウィンドウ', 'アクティビティ', 'ファイル情報', '詳細パネル', '詳細ペイン', '詳細とアクティビティ', 'ファイルの詳細', '情報'];
+  /* aria-labels of things on the right that are NOT the details pane (real dump) */
+  D.notPanelLabels = /(side ?panel|サイドパネル|transcript|文字起こし|calendar|keep|tasks|contacts|gemini|add-ons|カレンダー|タスク|ToDo|コンタクト|連絡先|アドオン|studio)/i;
   /* right-side heuristic (fraction of viewport / px) */
   D.notPanel = /(calendar|keep|tasks|contacts|gemini|add-ons|カレンダー|タスク|連絡先|アドオン)/i;
   D.side = { minLeft: 0.6, minW: 250, maxW: 500, minH: 0.55, shrinkPx: 120 };
@@ -470,8 +549,8 @@
     },
     breadcrumbContainer: '[role="navigation"],nav,[aria-label*="breadcrumb" i],[aria-label*="パンくず"]',
     /* Drive's own layout toggle (grid / list) */
-    listLayout: /^(list layout|list view|switch to list layout|リスト レイアウト|リストレイアウト|リスト表示|リスト レイアウトに切り替え)$/i,
-    gridLayout: /^(grid layout|grid view|switch to grid layout|グリッド レイアウト|グリッドレイアウト|グリッド表示|グリッド レイアウトに切り替え)$/i,
+    listLayout: /^((switch to )?list (layout|view)|リスト ?(レイアウト|表示)(に切り替え|に切り替える)?)$|^(list layout|リスト ?レイアウト)\b/i,
+    gridLayout: /^((switch to )?grid (layout|view)|グリッド ?(レイアウト|表示)(に切り替え|に切り替える)?)$|^(grid layout|グリッド ?レイアウト)\b/i,
     /* URL patterns */
     homePath: /^\/drive(\/u\/\d+)?\/?(home)?\/?$/,
     rootPath: /^\/?$/,
@@ -494,13 +573,18 @@
     const isBtn = (el) => el.matches('[role="button"],button,a,[role="link"]');
     const rootRe = Object.values(S.NAV.roots);
     // candidate root buttons inside the main area (not the left nav)
-    const cands = [...document.querySelectorAll('[role="button"],button,a[href],[role="link"]')].filter((b) => {
-      if (S.isOurs(b) || b.closest(LISTISH) || b.closest(S.menu) || b.closest('[data-dxe-details]')) return false;
+    // Real Drive (2026-10): the title/breadcrumb row sits ABOVE role=main, in a
+    // header block (.S630me) of the same column, ~150px higher. So search the
+    // column from below Google's banner down to just inside main.
+    const top0 = Math.max(0, (document.querySelector('header[role="banner"],[role="banner"]') || { getBoundingClientRect: () => ({ bottom: 0 }) }).getBoundingClientRect().bottom - 2);
+    const inColumn = (r) => r.width > 0 && r.left >= mr.left - 8 && r.right <= mr.right + 8 && r.top >= top0 && r.top >= mr.top - 260 && r.top < mr.top + 200;
+    const cands = [...document.querySelectorAll('[role="button"],button,a[href],[role="link"],[role="heading"],h1,h2')].filter((b) => {
+      if (S.isOurs(b) || b.closest(LISTISH) || b.closest(S.menu) || b.closest('[data-dxe-details],[role="complementary"],[role="banner"],[role="tree"],[role="dialog"]')) return false;
+      if (b.matches('[role="heading"],h1,h2') && b.querySelector('[role="button"],button,a[href],[role="link"]')) return false; // prefer the button inside
       const t = btnText(b);
       if (!t || !rootRe.some((re) => re.test(t))) return false;
-      const r = b.getBoundingClientRect();
-      return r.width > 0 && r.left >= mr.left - 8 && r.top >= mr.top - 80 && r.top < mr.top + 200;
-    });
+      return inColumn(b.getBoundingClientRect());
+    }).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
     for (const rootBtn of cands) {
       // container = nearest ancestor holding 1+ segment buttons on one line
       let box = rootBtn.parentElement;
@@ -510,19 +594,20 @@
       }
       if (!box) continue;
       const rr = rootBtn.getBoundingClientRect();
-      const segs = [...box.querySelectorAll('[role="button"],button,a[href],[role="link"]')]
-        .filter((b) => isBtn(b) && !b.closest(LISTISH) && (b === rootBtn || !b.contains(rootBtn)))
+      const segs = [rootBtn, ...[...box.querySelectorAll('[role="button"],button,a[href],[role="link"]')]
+        .filter((b) => b !== rootBtn && isBtn(b) && !b.closest(LISTISH) && !b.contains(rootBtn) && !rootBtn.contains(b))]
         .filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && Math.abs(r.top + r.height / 2 - (rr.top + rr.height / 2)) < 14 && r.left >= rr.left - 2; })
-        .filter((b) => btnText(b) && !/^(…|\.\.\.|more|その他)$/i.test(btnText(b)) && !b.querySelector('[role="button"],button'))
+        .filter((b) => (b === rootBtn ? btnText(b) : norm(b.textContent)) && !/^(…|\.\.\.|more|その他)$/i.test(btnText(b)) && (b === rootBtn || !b.querySelector('[role="button"],button')))
         .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
       // drop non-breadcrumb buttons to the right that are far away (filters, layout toggles)
       const out = [];
       let lastRight = rr.left;
       for (const b of segs) {
         const r = b.getBoundingClientRect();
+        if (b !== rootBtn && r.left < rr.left) continue;
         if (r.left - lastRight > 60) break;
         lastRight = r.right;
-        const label = btnText(b);
+        const label = b === rootBtn ? btnText(b) : norm(b.textContent);
         const rootKey = out.length ? null : Object.keys(S.NAV.roots).find((k) => S.NAV.roots[k].test(label));
         out.push({ label, el: b, root: rootKey || null, id: b.getAttribute('data-id') || null });
       }
@@ -533,11 +618,21 @@
 
   S.findLayoutButton = (re) => {
     for (const b of document.querySelectorAll('[role="button"],button,[role="radio"],[role="menuitemradio"],[role="tab"]')) {
-      if (S.isOurs(b) || b.closest('[data-id]')) continue;
+      if (S.isOurs(b) || b.closest('[data-id]') || b.closest(LISTISH) || b.closest('[role="complementary"],[aria-hidden="true"],[role="banner"]')) continue;
       const l = norm(b.getAttribute('aria-label') || b.getAttribute('data-tooltip') || b.textContent);
       if (re.test(l) && S.isShown(b)) return b;
     }
     return null;
+  };
+  /** Drive's keyboard shortcut "v" toggles list/grid; used when no button is found. */
+  S.layoutShortcut = () => {
+    const a = document.activeElement;
+    if (a && a.closest && a.closest(S.editable)) return false;
+    const target = (a && a !== document.body && !S.isOurs(a)) ? a : (scopeEl() || document.body);
+    const o = { key: 'v', code: 'KeyV', keyCode: 86, which: 86, bubbles: true, cancelable: true, composed: true };
+    for (const type of ['keydown', 'keypress', 'keyup']) target.dispatchEvent(new KeyboardEvent(type, type === 'keypress' ? { ...o, charCode: 118 } : o));
+    S.lastLayoutStrategy = 'shortcut-v';
+    return true;
   };
 
   /* ---------- suggestions (Home / My Drive) ---------- */
@@ -611,7 +706,9 @@
           seen.add(best);
           if (S.isOurs(best) || best.querySelector('[role="main"],[role="grid"] [data-id],[data-dxe-tile]')) continue;
           // never the Workspace side panel (Calendar/Keep/Tasks/Contacts/Gemini add-ons, iframes)
-          if (best.querySelector('iframe') || D.notPanel.test(norm(best.getAttribute('aria-label')) + ' ' + norm((best.querySelector('[role="heading"],h1,h2') || {}).textContent))) continue;
+          if (best.closest('[aria-hidden="true"]') || D.notPanelLabels.test(norm(best.getAttribute('aria-label'))) ||
+              D.notPanel.test(norm(best.getAttribute('aria-label')) + ' ' + norm((best.querySelector('[role="heading"],h1,h2') || {}).textContent))) continue;
+          if (best.querySelector('iframe') && !best.querySelector(D.hooks.close) && !(best.getAttribute('aria-label') && D.panelAriaLabels.includes(norm(best.getAttribute('aria-label'))))) continue;
           const hasUi = best.querySelector('[role="tab"],[role="heading"],h1,h2,h3') || S.findDetailsClose(best);
           const al = norm(best.getAttribute('aria-label'));
           const labelled = al && D.panelAriaLabels.some((x) => al === x || al.startsWith(x));

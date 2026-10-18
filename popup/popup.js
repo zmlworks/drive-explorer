@@ -47,4 +47,19 @@
     if (!r || !r.ok) throw new Error(r && r.error);
     return r.text;
   }, 'structureCopied'));
+  document.getElementById('structureLater').addEventListener('click', async () => {
+    status.textContent = '';
+    try {
+      const tab = await driveTab();
+      await chrome.tabs.sendMessage(tab.id, { type: 'dxe-structure-later', delay: 5000 });
+      status.textContent = msg('structureLaterArmed');
+    } catch (e) { status.textContent = msg('diagNoTab'); }
+  });
+  document.getElementById('structureLast').addEventListener('click', async () => {
+    status.textContent = '';
+    const { dxeLastStructure: last } = await chrome.storage.local.get('dxeLastStructure');
+    if (!last || !last.text) { status.textContent = msg('structureNone'); return; }
+    await navigator.clipboard.writeText(last.text);
+    status.textContent = msg('structureCopied').replace('$1', Math.round(last.text.length / 1024) + ' KB, ' + new Date(last.at).toLocaleTimeString());
+  });
 })();

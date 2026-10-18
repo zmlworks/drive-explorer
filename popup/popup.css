@@ -35,3 +35,6 @@ select { flex: 0 0 auto; max-width: 130px; padding: 4px 6px; border-radius: 4px;
   background: var(--bg); color: var(--fg); font: inherit; }
 select:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
 body { max-height: 600px; overflow-y: auto; }
+.btnrow { display: flex; gap: 6px; }
+.btnrow button { flex: 1; margin-top: 2px; }
+p.hint { margin: 2px 0 6px; font-size: 11px; color: var(--sub, #666); line-height: 1.4; }

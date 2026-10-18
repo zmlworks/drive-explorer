@@ -124,5 +124,20 @@
   },
   "structureCopied": {
     "message": "ページ構造をコピーしました ($1)。ファイル名と ID は除去済みです。"
+  },
+  "btnStructureLater": {
+    "message": "5 秒後に記録"
+  },
+  "btnStructureLast": {
+    "message": "最後の記録をコピー"
+  },
+  "structureHotkey": {
+    "message": "ヒント: ドライブのメニューや詳細パネルを開いた状態で Ctrl+Alt+Shift+S を押す（または「5 秒後に記録」）→「最後の記録をコピー」。"
+  },
+  "structureLaterArmed": {
+    "message": "5 秒後に記録します。ドライブに切り替えてメニュー／パネルを開いてください。"
+  },
+  "structureNone": {
+    "message": "まだ記録がありません。"
   }
 }
