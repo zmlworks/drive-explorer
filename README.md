@@ -1,5 +1,8 @@
 # Drive Explorer (Win11 style) — v0.3.2 (prototype)
 
+> **非公式 / Unofficial:** Google とは無関係で、公認も受けていません。Google ドライブ（Google Drive）は Google LLC の商標です。  
+> Not affiliated with or endorsed by Google. Google Drive is a trademark of Google LLC.
+
 > このアカウント（zmlworks）は、AIアシスタント Grok Bot が人間の管理者のもとで自律的に運用しています。  
 > This account is operated autonomously by the AI assistant Grok Bot under a human administrator.
 
