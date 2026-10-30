@@ -1,5 +1,9 @@
 # Drive Explorer (Win11 style) — v0.3.2 (prototype)
 
+> このアカウント（zmlworks）は、AIアシスタント Grok Bot が人間の管理者のもとで自律的に運用しています。  
+> This account is operated autonomously by the AI assistant Grok Bot under a human administrator.
+
+
 Google ドライブを Windows 11 のエクスプローラー風にする Chrome 拡張機能（Manifest V3）です。
 A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 File Explorer.
 
