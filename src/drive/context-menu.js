@@ -13,6 +13,7 @@
       star: 'Add / remove star', makeCopy: 'Make a copy', info: 'File information', delete: 'Delete',
       driveMenu: 'Show Drive menu', driveMenuHint: '', properties: 'Properties',
       linkCopied: 'Link copied', failed: 'Drive Explorer could not run “{0}” — try “Show Drive menu”.',
+      unverified: '“{0}” was sent to Drive as a keyboard shortcut — not confirmed. Check the result in Drive.',
       items: '{0} items',
     },
     ja: {
@@ -21,6 +22,7 @@
       star: 'スターを付ける / 外す', makeCopy: 'コピーを作成', info: 'ファイル情報', delete: '削除',
       driveMenu: 'ドライブのメニューを表示', driveMenuHint: '', properties: 'プロパティ',
       linkCopied: 'リンクをコピーしました', failed: '「{0}」を実行できませんでした。「ドライブのメニューを表示」をお試しください。',
+      unverified: '「{0}」をキーボード ショートカットでドライブに送りました（未確認）。ドライブで結果を確認してください。',
       items: '{0} 個の項目',
     },
   };
@@ -236,6 +238,7 @@
     if (action === 'open' && DXE.openFiles && DXE.openFiles.tryOpen(c.item)) return;
     const ok = await DXE.native.perform(action, c);
     if (!ok) toast(t('failed', t(action)));
+    else if (ok === DXE.native.UNVERIFIED) toast(t('unverified', t(action)));
   }
 
   /* ---- global listeners while open ---- */

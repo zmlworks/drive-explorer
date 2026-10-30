@@ -19,7 +19,10 @@
     e.stopImmediatePropagation();
     const keyboard = e.button !== 2 && e.clientX === 0 && e.clientY === 0;
     ensureSelected(item, t);
-    DXE.menu.show({ item, target: t, x: keyboard ? null : e.clientX, y: keyboard ? null : e.clientY, keyboard });
+    // 0.3.3: what the menu acts on, so a key-press fallback (Delete) can check the selection is unchanged
+    const sel = SEL.selectedItems();
+    const expect = sel.includes(item) ? sel : [item];
+    DXE.menu.show({ item, target: t, x: keyboard ? null : e.clientX, y: keyboard ? null : e.clientY, keyboard, expect });
   }
 
   /* Right-clicking an unselected item selects it (Explorer + Drive behaviour).

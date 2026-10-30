@@ -11,8 +11,12 @@
   const KEY = 'dxeBinCount';
   const STR = {
     en: { name: 'Recycle Bin', open: 'Open', empty: 'Empty Recycle Bin', moved: (n) => `Moved ${n} item${n === 1 ? '' : 's'} to the Recycle Bin — Ctrl+Z or Drive’s “Undo” restores`,
+      unverified: (n) => `Sent “delete” for ${n} item${n === 1 ? '' : 's'} to Drive — not confirmed. Check the result in Drive`,
+      aborted: 'The selection changed, so nothing was moved to the Recycle Bin.', inTrash: 'Dropping is disabled inside Trash.',
       drop: 'Move to Recycle Bin', emptyHint: 'Opening Trash — use Drive’s “Empty trash” button there.', tip: (n) => n ? `About ${n} item${n === 1 ? '' : 's'} (approximate)` : 'Empty' },
     ja: { name: 'ごみ箱', open: '開く', empty: 'ごみ箱を空にする', moved: (n) => `${n} 個の項目をごみ箱に移動しました — Ctrl+Z またはドライブの「元に戻す」で戻せます`,
+      unverified: (n) => `${n} 個の項目の削除をドライブに送りました（未確認）。ドライブで結果を確認してください`,
+      aborted: '選択が変わったため、ごみ箱への移動を中止しました。', inTrash: 'ゴミ箱の中ではドロップできません。',
       drop: 'ごみ箱へ移動', emptyHint: 'ゴミ箱を開きます。そこでドライブの「ゴミ箱を空にする」を使ってください。', tip: (n) => n ? `約 ${n} 個の項目 (概算)` : '空' },
   };
   const L = () => STR[SEL.uiLang()];
@@ -76,8 +80,8 @@
       ] });
     });
     // HTML5 drag & drop (if Drive uses it)
-    el.addEventListener('dragenter', (e) => { if (drag.item) { e.preventDefault(); el.classList.add('over'); } });
-    el.addEventListener('dragover', (e) => { if (drag.item) { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; el.classList.add('over'); } });
+    el.addEventListener('dragenter', (e) => { if (drag.item && !inTrash()) { e.preventDefault(); el.classList.add('over'); } });
+    el.addEventListener('dragover', (e) => { if (drag.item && !inTrash()) { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; el.classList.add('over'); } });
     el.addEventListener('dragleave', () => el.classList.remove('over'));
     el.addEventListener('drop', (e) => { if (drag.item) { e.preventDefault(); e.stopPropagation(); dropNow('html5'); } });
   }
@@ -114,6 +118,8 @@
 
   /* ---- drag tracking (HTML5 + mouse-based fallback) ---- */
   const drag = { item: null, x: 0, y: 0, moving: false, done: false };
+  // 0.3.3: no drop inside Trash (there, Drive's Delete means "delete forever")
+  const inTrash = () => SEL.isTrashView();
   const inBin = (x, y) => { if (!el || !host.isConnected) return false; const r = el.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
   window.addEventListener('dragstart', (e) => { const it = SEL.findItem(e.target); if (it && DXE.settings.recycleBin) Object.assign(drag, { item: it, moving: true, done: false }); }, true);
   window.addEventListener('dragend', () => { if (el) el.classList.remove('over'); setTimeout(() => { drag.item = null; drag.moving = false; }, 50); }, true);
@@ -125,7 +131,7 @@
   window.addEventListener('mousemove', (e) => {
     if (!drag.item || !(e.buttons & 1)) return;
     if (!drag.moving && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) drag.moving = true;
-    if (drag.moving && el) el.classList.toggle('over', inBin(e.clientX, e.clientY));
+    if (drag.moving && el) el.classList.toggle('over', !inTrash() && inBin(e.clientX, e.clientY));
   }, true);
   const onUp = (e) => {
     if (drag.item && drag.moving && inBin(e.clientX, e.clientY)) dropNow('mouse');
@@ -140,13 +146,30 @@
     drag.done = true;
     const item = drag.item;
     el.classList.remove('over');
+    if (inTrash()) { DXE.menu.toast(L().inTrash); return; }
     const sel = SEL.selectedItems();
-    const n = SEL.isSelected(item) ? Math.max(1, sel.length) : 1;
+    // what the user dropped: the whole selection if they dragged a selected item, else just that item
+    const expect = SEL.isSelected(item) && sel.length ? sel : [item];
+    const n = expect.length;
     DXE.log('recycle bin drop via', via, 'items', n);
     // let Drive finish its own drag (it cancels when dropped outside a folder)
     await new Promise((r) => setTimeout(r, 120));
     if (!SEL.isSelected(item)) DXE.native.selectItem(item, item);
-    const ok = await DXE.native.perform('delete', { item, target: item });
+    // 0.3.3: before acting on Drive's selection, make sure it is still exactly what was dropped
+    const why = DXE.native.selectionMismatch({ item, expect });
+    if (why) {
+      DXE.log('recycle bin drop aborted:', why);
+      DXE.menu.toast(L().aborted);
+      return;
+    }
+    const ok = await DXE.native.perform('delete', { item, target: item, expect });
+    if (ok === DXE.native.UNVERIFIED) {
+      // keyboard fallback: success only if the items actually left the list
+      await new Promise((r) => setTimeout(r, 1200));
+      if (expect.every((it) => !it.isConnected)) { setCount(count + n); DXE.menu.toast(L().moved(n)); }
+      else DXE.menu.toast(L().unverified(n));
+      return;
+    }
     DXE.menu.toast(ok ? L().moved(n) : DXE.menu.t('failed', DXE.menu.t('delete')));
   }
 

@@ -116,7 +116,12 @@
     delete: {
       paths: [[L.TRASH]],
       toolbar: /^(move to trash|move to bin|remove|ゴミ箱に移動|削除)$/i,
+      /* 0.3.3: in shared views "Remove" / 「削除」 in the action bar can mean something else
+         (remove from Shared with me, remove access) → only the explicit trash labels there */
+      toolbarShared: /^(move to trash|move to bin|ゴミ箱に移動)$/i,
       keys: [{ key: 'Delete', code: 'Delete', keyCode: 46 }],
+      /* 0.3.3: the Delete key acts on whatever is selected → only after the selection is verified */
+      destructive: true,
     },
     driveMenu: { custom: 'driveMenu' },
     properties: { custom: 'properties', single: true },
@@ -580,6 +585,17 @@
   S.myDriveUrl = () => location.origin + S.prefix() + '/my-drive';
   S.trashUrl = () => location.origin + S.prefix() + '/trash';
   S.folderUrl = (id) => location.origin + S.prefix() + '/folders/' + encodeURIComponent(id);
+  /** Shared with me / Shared drives (by URL, or by the first breadcrumb segment). */
+  S.isSharedView = () => {
+    if (/\/(shared-with-me|shared-drives)(\/|$)/.test(location.pathname)) return true;
+    try {
+      const b = S.breadcrumbs();
+      return !!(b && b[0] && (b[0].root === 'sharedDrives' || b[0].root === 'sharedWithMe'));
+    } catch (e) {
+      return false;
+    }
+  };
+  S.isTrashView = () => S.NAV.trashPath.test(location.pathname);
   S.currentFolderId = () => { const m = location.pathname.match(S.NAV.folderPath); return m ? m[1] : null; };
 
   // visible text without aria-hidden decorations (the "▾" / svg next to the folder name) and tooltips

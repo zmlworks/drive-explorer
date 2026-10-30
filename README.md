@@ -1,4 +1,4 @@
-# Drive Explorer (Win11 style) — v0.3.2 (prototype)
+# Drive Explorer (Win11 style) — v0.3.3 (prototype)
 
 > **非公式 / Unofficial:** Google とは無関係で、公認も受けていません。Google ドライブ（Google Drive）は Google LLC の商標です。  
 > Not affiliated with or endorsed by Google. Google Drive is a trademark of Google LLC.
@@ -39,7 +39,7 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 17. **ページ構造の記録の改善**（0.3.1）— 詳細パネル（**ラベルの文字は残し、値は除去**）、一覧の上のヘッダー、`role=main` から最初の項目までの経路と最初の数項目、開いているメニュー、本拡張が裏で開いたドライブのメニューの記録、検出結果の要約を、深さ 25〜40 で先頭に出力します。iframe（ホスト名・パスと同一オリジンかどうか）も出力し、同一オリジンなら中身も辿ります。メニューやパネルを開いたままで記録できるよう、**Ctrl+Alt+Shift+S** またはポップアップの「5 秒後に記録」で保存し、「最後の記録をコピー」でコピーします。
 
 ### インストール（パッケージ化されていない拡張機能として読み込む）
-1. `drive-explorer-0.3.2.zip` を任意のフォルダに展開します（中に `manifest.json` があるフォルダ）。
+1. `drive-explorer-0.3.3.zip` を任意のフォルダに展開します（中に `manifest.json` があるフォルダ）。
 2. Chrome で `chrome://extensions` を開きます。
 3. 右上の **デベロッパー モード** をオンにします。
 4. **「パッケージ化されていない拡張機能を読み込む」** をクリックし、展開したフォルダ（`manifest.json` があるフォルダ）を選択します。
@@ -52,7 +52,7 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 ### 既知の制限
 - 実際のドライブでは未検証です。ドライブのクラス名は難読化されて頻繁に変わるため、`role` / `aria-*` / `data-id` / `data-target` などの比較的安定した属性と、サイズ・テキストのヒューリスティックで要素を探しています。ドライブの更新で壊れる可能性があります（修正箇所は `src/drive/selectors.js` に集約）。
 - 中アイコン表示はグリッド表示のみが対象です（リスト表示は変更しません）。ドライブの行（row）構造を 1 本の折り返しフローに並べ替えているため、**矢印キーでの移動**はドライブ内部の行の区切りに従い、見た目と一致しないことがあります。
-- メニュー項目は「見えない状態でドライブ標準のメニューを開いてクリックする」方式です。ドライブが合成イベントを無視した場合は、選択時のツールバーのボタン → ドライブのキーボードショートカット → 代替処理（リンク生成など）の順に試します。それでも失敗した場合はトーストを表示するので「ドライブのメニューを表示」を使ってください。
+- メニュー項目は「見えない状態でドライブ標準のメニューを開いてクリックする」方式です。ドライブが合成イベントを無視した場合は、選択時のツールバーのボタン → ドライブのキーボードショートカット → 代替処理（リンク生成など）の順に試します。それでも失敗した場合はトーストを表示するので「ドライブのメニューを表示」を使ってください。キーボードショートカットでの代替は結果を確認できないため「（未確認）」と表示します。「ゴミ箱に移動」では、選択が操作した項目と完全に一致するときだけ使い、ゴミ箱ページでは使いません（0.3.3）。
 - **Shift + 右クリックでは Chrome（ブラウザ）の標準メニューが出ます。これは想定どおりの動作です**（本拡張は Shift 付きの右クリックには何もしません。リンクのコピーや検証などブラウザのメニューを使いたいとき用）。**ドライブ自身のメニューを出すには、本拡張のメニューの「ドライブのメニューを表示」を使ってください。**
 - ショートカット表示はドライブ自身のショートカットです（実際のドライブの表示に合わせ 0.3.2 で 共有 Ctrl+Alt+A・移動 Ctrl+Alt+M・名前を変更 Ctrl+Alt+E・詳細 Alt+V → D に更新）。F2（名前の変更）は本拡張が追加しています。
 - 「スター」は付ける/外すを自動で切り替えます（ドライブのメニューにある方を実行）。
@@ -106,7 +106,7 @@ A Chrome (Manifest V3) extension that makes Google Drive feel like Windows 11 Fi
 17. **Better page-structure capture** (0.3.1) — focused sections first, 25–40 levels deep: the details pane (**label texts kept, values stripped**), the header above the list, the path from `role=main` to the first item plus the first items, open menus, the native menus Drive Explorer opened invisibly, and a detection summary. Iframes are listed (host/path, same-origin or not) and same-origin ones are walked. To capture while a menu or the pane is open, press **Ctrl+Alt+Shift+S** or use the popup's **Capture in 5 s**, then **Copy last capture**.
 
 ### Install (Load unpacked)
-1. Unzip `drive-explorer-0.3.2.zip` somewhere (you need the folder that contains `manifest.json`).
+1. Unzip `drive-explorer-0.3.3.zip` somewhere (you need the folder that contains `manifest.json`).
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** (top right).
 4. Click **Load unpacked** and select the unzipped folder (the one containing `manifest.json`).
@@ -119,7 +119,7 @@ Only `storage` (settings in `chrome.storage.sync`, the bin counter in `chrome.st
 ### Known limitations
 - **Not yet verified on the live Drive.** Drive's class names are obfuscated and change often, so the code relies on comparatively stable hooks (`role`, `aria-*`, `data-id`, `data-target`) plus size/text heuristics. A Drive update can break it; all DOM knowledge lives in `src/drive/selectors.js`.
 - Medium icons applies to Grid view only (List view is unchanged). Drive's rows are flattened into one wrapping flow, so **arrow-key navigation** still follows Drive's internal rows and may not match what you see.
-- Menu actions work by driving Drive's native menu with synthetic events. If Drive ignores them, the extension falls back to the selection toolbar button, then Drive's keyboard shortcut, then a custom fallback (e.g. building the link for Copy link). If everything fails a toast appears — use **Show Drive menu**.
+- Menu actions work by driving Drive's native menu with synthetic events. If Drive ignores them, the extension falls back to the selection toolbar button, then Drive's keyboard shortcut, then a custom fallback (e.g. building the link for Copy link). If everything fails a toast appears — use **Show Drive menu**. A keyboard-shortcut fallback cannot be checked, so it shows a "not confirmed" toast; for Move to trash it is used only when the selection is exactly the item(s) you acted on, and never on the Trash page (0.3.3).
 - **Shift + right-click shows Chrome's own browser menu — that is expected** (the extension leaves Shift+right-click alone so you can still reach the browser menu, e.g. Inspect). **To get Drive's own menu, use “Show Drive menu” in our menu.**
 - The shortcut hints are Drive's own shortcuts (updated in 0.3.2 to what real Drive shows: Share Ctrl+Alt+A, Move Ctrl+Alt+M, Rename Ctrl+Alt+E, Details Alt+V then D); F2 (rename) is added by this extension.
 - "Star" toggles (it runs whichever of Add to / Remove from Starred Drive offers).
@@ -181,9 +181,10 @@ test/                      mock Drive/Docs pages + headless tests (not shipped)
 scripts/build-zip.sh       builds ../out/drive-explorer-<ver>.zip
 ```
 
-Tests (need Chrome + playwright-core): `node test/run-screenshots.mjs <outDir>` (scripts injected into the mocks) and `node test/run-real-extension.mjs <outDir>` (the real unpacked extension, with drive/docs.google.com answered locally by the mocks).
+Tests (need Chrome + playwright-core): `node test/run-screenshots.mjs <outDir>` (scripts injected into the mocks), `node test/run-fixes-0.3.3.mjs` (Recycle Bin / Delete safety checks) and `node test/run-real-extension.mjs <outDir>` (the real unpacked extension, with drive/docs.google.com answered locally by the mocks).
 
 ## Changelog
+- **0.3.3** — Safer "Move to trash": the Delete-key fallback (used only when Drive's menu and action bar both fail) now runs only if Drive's selection is exactly the item(s) you dropped on the Recycle Bin or right-clicked, never on the Trash page (where Delete means "delete forever"), and its result is shown as **not confirmed / 未確認** instead of success (the Recycle Bin counts it only once the items actually leave the list). Dropping on the Recycle Bin is disabled inside Trash, and a drop is cancelled if the selection changed in the meantime. In Shared with me / Shared drives the action-bar fallback only accepts explicit "Move to trash / ゴミ箱に移動" buttons (not "Remove" / 「削除」, which can mean something else there).
 - **0.3.2** — Fixed the "facing mirrors" address bar (folder name repeated many times right after double-clicking a folder): Drive switches the URL before `dblclick` fires, so the folder was learned as its own parent; the parent is now taken at mousedown, self/cyclic entries are refused and cleaned from the session cache, segments are de-duplicated, our own UI and `aria-hidden` / toolbar nodes are excluded from breadcrumb detection, and the address bar repaints only once the DOM has settled. Properties (already working in 0.3.1 per the user's dump) now also reads the heading sections "Who has access" / "Security restrictions", keeps repeated labels (the 2nd "Size"), ignores "Manage versions" / loading / offline texts, and fills "Location" from the breadcrumbs. Shortcut-suffixed labels (`共有 Ctrl+Alt+A`, `名前を変更, Ctrl+Alt+E`, `…(Alt+V、D キーの順)`) are cleaned before matching; the list/grid switch uses Drive's `role=radiogroup` and falls back to Alt+V, L; Details key Alt+V, D. Page-structure dumps now hide people's names in the pane (gridcell/avatar aria-labels). README: Shift+right-click shows Chrome's menu by design — use "Show Drive menu".
 - **0.3.1** — Matched to the real Drive DOM from two user dumps: details pane via `aria-label="詳細ウィンドウ"` + `data-target=hideDetails`, pane open-state measured through our hiding CSS, header name/type, iframe-aware scraping (+ all-frames helper), partial Properties instead of failure; breadcrumbs from the header above `role=main`; toolbar placed in that header (main height compensation fallback); `role=toolbar` buttons preferred; `v` view-switch fallback; side rail / transcript sidebar / hidden viewer excluded. Page structure: focused deep sections, pane label texts, iframes, native-menu snapshots, summary, Ctrl+Alt+Shift+S and delayed capture. Mock rebuilt to the real structure.
 - **0.3.0** — "Copy page structure"; aria-label + right-column heuristics for hiding the details pane; Explorer toolbar with /path address bar, Alt+↑/Backspace; status bar; Fluent file icons; hide suggestions; open files in new tab/window (service worker); Recycle Bin tile; start in My Drive (app window); Ctrl+C copies link.

@@ -251,8 +251,9 @@
       }
       // 2. selection toolbar
       if (spec.toolbar) {
-        const b = SEL.findToolbarButton(spec.toolbar);
-        log.steps.push({ via: 'toolbar', ok: !!b });
+        const re = spec.toolbarShared && SEL.isSharedView() ? spec.toolbarShared : spec.toolbar;
+        const b = SEL.findToolbarButton(re);
+        log.steps.push({ via: 'toolbar', ok: !!b, shared: re === spec.toolbarShared || undefined });
         if (b) { activate(b); return (log.ok = true); }
       }
       // 3. custom fallback (before keys for copy link: keys would not copy)
@@ -263,22 +264,46 @@
       }
       // 4. keyboard shortcut
       if (spec.keys) {
+        if (spec.destructive) {
+          // 0.3.3: a key press acts on Drive's current selection, which we cannot tie to ctx.item
+          // for sure → never on the Trash page (Delete = delete forever) and only if the
+          // selection is exactly what the user acted on.
+          const why = SEL.isTrashView() ? 'trash view' : selectionMismatch(ctx);
+          if (why) {
+            log.steps.push({ via: 'keys', ok: false, why: 'aborted: ' + why });
+            return (log.ok = false);
+          }
+        }
         const el = ctx.item.contains(document.activeElement) ? document.activeElement : ctx.item;
         if (el !== document.activeElement && el.focus) el.focus({ preventScroll: true });
         spec.keys.forEach((k) => pressKey(document.activeElement || el, k));
-        log.steps.push({ via: 'keys', ok: true, keys: spec.keys.map((k) => k.key) });
-        return (log.ok = true); // cannot verify
+        log.steps.push({ via: 'keys', ok: 'unverified', keys: spec.keys.map((k) => k.key) });
+        // 0.3.3: we cannot tell whether Drive acted on the key → callers show "未確認 / not confirmed"
+        return (log.ok = UNVERIFIED);
       }
       return (log.ok = false);
     } finally {
       record(log);
       DXE.log('action', id, log.ok ? 'OK' : 'FAILED', log.steps);
-      if (id === 'delete' && log.ok) {
+      if (id === 'delete' && log.ok === true) {
         let n = 1;
         try { n = targets(ctx).length || 1; } catch (e) { /* ignore */ }
         document.dispatchEvent(new CustomEvent('dxe-deleted', { detail: n }));
       }
     }
+  }
+
+  const UNVERIFIED = 'unverified';
+
+  /** null if Drive's selection is exactly ctx.expect (or [ctx.item]), else the reason. */
+  function selectionMismatch(ctx) {
+    const item = ctx && ctx.item;
+    if (!item || !item.isConnected) return 'item gone';
+    if (!SEL.isSelected(item)) return 'item not selected';
+    const sel = SEL.selectedItems();
+    const want = ctx.expect && ctx.expect.length ? ctx.expect : [item];
+    if (sel.length !== want.length || want.some((w) => !sel.includes(w))) return `selection ${sel.length} ≠ expected ${want.length}`;
+    return null;
   }
 
   /** Select an item like a user click would (best effort). */
@@ -298,6 +323,8 @@
     selectItem,
     isBypassing: () => bypass,
     perform,
+    UNVERIFIED,
+    selectionMismatch,
     openNativeMenu,
     lastResults,
     pressKey,
